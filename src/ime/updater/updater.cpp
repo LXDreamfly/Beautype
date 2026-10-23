@@ -28,7 +28,7 @@ namespace ime::updater {
 namespace {
 
 const wchar_t kDefaultApiUrl[] =
-    L"https://api.github.com/repos/LXD-Dreamfly/Beautype/releases/latest";
+    L"https://api.github.com/repos/LXDreamfly/Beautype/releases/latest";
 const wchar_t kTempInstaller[] = L"BeautypeSetup_update.exe";
 const wchar_t kUpdateCfgRel[] = L"config\\update.yaml";
 const wchar_t kEnvUpdateUrl[] = L"BEAUTYPE_UPDATE_URL";

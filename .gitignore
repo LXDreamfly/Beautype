@@ -1,0 +1,20 @@
+# Build outputs and temporary files (not published to source repo)
+build/
+build-x86/
+dist/
+*.log
+*.obj
+*.pdb
+*.exe
+*.dll
+*.zip
+_backup/
+_dbg_tools/
+_old_pet_unpack/
+_tmp_img/
+# Internal local-only docs (not published)
+AI_HANDBOOK.md
+docs/release-guide.md
+docs/errors-and-lessons.md
+# Temporary diagnostic files with _ prefix
+_*

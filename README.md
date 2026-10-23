@@ -128,6 +128,13 @@ Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可
 
 GPL-3.0（见 `LICENSE`）。第三方许可见 `THIRD-PARTY-NOTICES.md`。
 
+## ⚠️ 免责声明
+
+- 本软件按"原样"提供，不提供任何担保（详见 `LICENSE`，GPL-3.0）。
+- 用户上传的皮肤 / 素材版权归上传者或原作者所有，本项目不对用户上传内容负责。
+- 软件完全本地运行：无遥测、无数据收集、无账号；键盘钩子仅用于本地按键提示。
+- 当前版本安装包未签名，Windows 可能显示"未知发布者"警告。
+
 ## 参考
 
 - [weasel（小狼毫）](https://github.com/rime/weasel) · [Rime](https://github.com/rime) · [水杉输入法](https://github.com/metasequoiaime/msime-windows) · [PIME](https://github.com/EasyIME/PIME)
