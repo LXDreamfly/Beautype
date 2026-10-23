@@ -128,6 +128,13 @@ Tech stack: C++ / TSF / Rime (librime) · rive-runtime (D3D11) · NSIS.
 
 GPL-3.0 (see `LICENSE`). Third-party licenses: `THIRD-PARTY-NOTICES.md`.
 
+## ⚠️ Disclaimer
+
+- This software is provided "AS IS" without warranty of any kind (see `LICENSE`, GPL-3.0).
+- Copyright of user-uploaded skins/assets belongs to the uploader or the original author; this project is not responsible for user-uploaded content.
+- The software runs 100% locally: no telemetry, no data collection, no account; the keyboard hook is only used for local keystroke hints.
+- The current installer is unsigned; Windows may show an "unknown publisher" warning.
+
 ## References
 
 - [weasel](https://github.com/rime/weasel) · [Rime](https://github.com/rime) · [Metasequoia IME](https://github.com/metasequoiaime/msime-windows) · [PIME](https://github.com/EasyIME/PIME)
