@@ -33,6 +33,7 @@
 
 #include "skin/theme.h"
 #include "log/log.h"
+#include "i18n/strings.h"
 
 // 统一日志文件（rime_server.exe 内为 rime_server.log；正式版无 stdout）
 namespace ime { extern FILE* g_log; }
@@ -628,10 +629,12 @@ std::wstring NormalizeFontFamily(const std::wstring& family) {
 }
 
 void RefreshBgLabel(SettingsContext* ctx) {
+  using ime::i18n::Str;
   const std::wstring text =
       ctx->draft.background_image.empty()
-          ? L"（无背景图，纯色背景）"
-          : (L"背景图: " + ToWide(ctx->draft.background_image));
+          ? ime::i18n::Tr(Str::kBackgroundNone)
+          : (ime::i18n::Tr(Str::kBackgroundLabel) +
+             ToWide(ctx->draft.background_image));
   SetWindowTextW(GetDlgItem(ctx->dlg, kLabelBg), text.c_str());
 }
 
@@ -740,7 +743,7 @@ void PickBackgroundImage(SettingsContext* ctx) {
   ofn.lpstrFile[0] = L'\0';
   ofn.nMaxFile = MAX_PATH;
   // 过滤器：双 null 结尾的「描述\0模式\0...\0\0」对
-  ofn.lpstrFilter = L"PNG 图片 (*.png)\0*.png\0所有文件 (*.*)\0*.*\0\0";
+  ofn.lpstrFilter = ime::i18n::TrW(ime::i18n::Str::kFileFilterPng);
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
   if (!GetOpenFileNameW(&ofn)) {
@@ -762,8 +765,11 @@ void PickBackgroundImage(SettingsContext* ctx) {
     std::filesystem::create_directories(ctx->config_dir, ec);
     if (ec) {
       const std::wstring msg =
-          L"无法创建配置目录:\n" + ToWide(ctx->config_dir) + L"\n" + ToWide(ec.message());
-      MessageBoxW(ctx->dlg, msg.c_str(), L"Beautype 设置", MB_OK | MB_ICONWARNING);
+          ime::i18n::Tr(ime::i18n::Str::kErrorCreateConfigDir) +
+          ToWide(ctx->config_dir) + L"\n" + ToWide(ec.message());
+      MessageBoxW(ctx->dlg, msg.c_str(),
+                  ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                  MB_OK | MB_ICONWARNING);
       return;
     }
   }
@@ -771,8 +777,11 @@ void PickBackgroundImage(SettingsContext* ctx) {
   // equivalent 在任一路径不存在时会抛 filesystem_error，须 try/catch 兜底。
   const bool same_file = ime::PathsEquivalent(ToUtf8(src), ToUtf8(dst.wstring()));
   if (!same_file && !CopyFileW(src.c_str(), dst.c_str(), FALSE)) {
-    const std::wstring msg = L"无法把背景图复制到配置目录:\n" + dst.wstring();
-    MessageBoxW(ctx->dlg, msg.c_str(), L"Beautype 设置", MB_OK | MB_ICONWARNING);
+    const std::wstring msg =
+        ime::i18n::Tr(ime::i18n::Str::kErrorCopyBackground) + dst.wstring();
+    MessageBoxW(ctx->dlg, msg.c_str(),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                MB_OK | MB_ICONWARNING);
     return;
   }
   ctx->draft.background_image = ToUtf8(name);
@@ -795,7 +804,7 @@ void PickSkinImage(SettingsContext* ctx, bool role) {
   ofn.lpstrFile[0] = L'\0';
   ofn.nMaxFile = MAX_PATH;
   // 过滤器：双 null 结尾的「描述\0模式\0...\0\0」对
-  ofn.lpstrFilter = L"PNG 图片 (*.png)\0*.png\0所有文件 (*.*)\0*.*\0\0";
+  ofn.lpstrFilter = ime::i18n::TrW(ime::i18n::Str::kFileFilterPng);
   ofn.nFilterIndex = 1;
   ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
   if (!GetOpenFileNameW(&ofn)) {
@@ -826,8 +835,11 @@ void PickSkinImage(SettingsContext* ctx, bool role) {
     std::filesystem::create_directories(ctx->config_dir, ec);
     if (ec) {
       const std::wstring msg =
-          L"无法创建配置目录:\n" + ToWide(ctx->config_dir) + L"\n" + ToWide(ec.message());
-      MessageBoxW(ctx->dlg, msg.c_str(), L"Beautype 设置", MB_OK | MB_ICONWARNING);
+          ime::i18n::Tr(ime::i18n::Str::kErrorCreateConfigDir) +
+          ToWide(ctx->config_dir) + L"\n" + ToWide(ec.message());
+      MessageBoxW(ctx->dlg, msg.c_str(),
+                  ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                  MB_OK | MB_ICONWARNING);
       return;
     }
   }
@@ -844,9 +856,12 @@ void PickSkinImage(SettingsContext* ctx, bool role) {
     copied = true;
   }
   if (!copied) {
-    const std::wstring msg = L"无法把图片复制到配置目录:\n" + dst.wstring() +
-                             L"\n\n旧图片可能被输入法占用，请重启输入法后重试。";
-    MessageBoxW(ctx->dlg, msg.c_str(), L"Beautype 设置", MB_OK | MB_ICONWARNING);
+    const std::wstring msg =
+        ime::i18n::Tr(ime::i18n::Str::kErrorCopyImage) + dst.wstring() +
+        ime::i18n::Tr(ime::i18n::Str::kErrorImageLocked);
+    MessageBoxW(ctx->dlg, msg.c_str(),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                MB_OK | MB_ICONWARNING);
     return;
   }
   // 上传前尺寸校验（真机根因 2026-10-04：输入框图 1004×69，九宫格切线
@@ -860,7 +875,9 @@ void PickSkinImage(SettingsContext* ctx, bool role) {
   {
     Gdiplus::Bitmap probe(src.c_str());
     if (probe.GetLastStatus() != Gdiplus::Ok) {
-      MessageBoxW(ctx->dlg, L"图片无法解码，请重新选择 PNG 图片。", L"Beautype 设置",
+      MessageBoxW(ctx->dlg,
+                  ime::i18n::TrW(ime::i18n::Str::kErrorDecodeImage),
+                  ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                   MB_OK | MB_ICONWARNING);
       return;
     }
@@ -869,21 +886,25 @@ void PickSkinImage(SettingsContext* ctx, bool role) {
     if (role) {
       // 角色图：固定站右侧不变形；建议 256×256，底线 64×64
       if (img_w < 64 || img_h < 64) {
-        wchar_t buf[160];
-        swprintf_s(buf, L"角色图尺寸不合规（当前 %d×%d）\n建议 256×256 PNG 透明底，至少 64×64。",
+        wchar_t buf[220];
+        swprintf_s(buf,
+                   ime::i18n::TrW(ime::i18n::Str::kErrorRoleSize),
                    img_w, img_h);
-        MessageBoxW(ctx->dlg, buf, L"Beautype 设置", MB_OK | MB_ICONWARNING);
+        MessageBoxW(ctx->dlg, buf,
+                    ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                    MB_OK | MB_ICONWARNING);
         return;
       }
     } else {
       // 输入框图：九宫格切线 150/150/40/40，中间文字区至少保留 20px
       if (img_w < 320 || img_h < 100) {
-        wchar_t buf[200];
+        wchar_t buf[280];
         swprintf_s(buf,
-                   L"输入框图片尺寸不合规（当前 %d×%d）\n建议 600×200 PNG"
-                   L"（左右各 150px 不变形、中间拉伸），至少 320×100。",
+                   ime::i18n::TrW(ime::i18n::Str::kErrorFrameSize),
                    img_w, img_h);
-        MessageBoxW(ctx->dlg, buf, L"Beautype 设置", MB_OK | MB_ICONWARNING);
+        MessageBoxW(ctx->dlg, buf,
+                    ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                    MB_OK | MB_ICONWARNING);
         return;
       }
     }
@@ -996,7 +1017,9 @@ bool SaveAndApply(SettingsContext* ctx) {
     ::ime::LogF("[skin] 保存 theme.yaml 抛异常(已捕获): %s\n", e.what());
   }
   if (!yaml_ok) {
-    MessageBoxW(ctx->dlg, L"写入 theme.yaml 失败，请检查配置目录权限。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorWriteTheme),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONERROR);
     return false;
   }
@@ -1089,7 +1112,9 @@ void SavePreset(SettingsContext* ctx) {
     trimmed.pop_back();
   }
   if (trimmed.empty()) {
-    MessageBoxW(ctx->dlg, L"请先输入配置名（例如：日常深色）。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorPresetName),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONINFORMATION);
     return;
   }
@@ -1098,7 +1123,9 @@ void SavePreset(SettingsContext* ctx) {
   std::error_code ec;
   std::filesystem::create_directories(PresetsDir(ctx->config_dir), ec);
   if (ec) {
-    MessageBoxW(ctx->dlg, L"无法创建配置目录 presets/。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorCreatePresetDir),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONERROR);
     return;
   }
@@ -1113,7 +1140,9 @@ void SavePreset(SettingsContext* ctx) {
     ::ime::LogF("[skin] 保存配置 %ls 抛异常(已捕获): %s\n", trimmed.c_str(), e.what());
   }
   if (!preset_ok) {
-    MessageBoxW(ctx->dlg, L"保存配置失败，请检查 presets/ 目录权限。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorSavePreset),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONERROR);
     return;
   }
@@ -1144,7 +1173,9 @@ void LoadPreset(SettingsContext* ctx) {
   const HWND combo = GetDlgItem(ctx->dlg, kComboPreset);
   const int sel = static_cast<int>(SendMessageW(combo, CB_GETCURSEL, 0, 0));
   if (sel == CB_ERR) {
-    MessageBoxW(ctx->dlg, L"请先在下拉框选择一个配置。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorSelectPreset),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONINFORMATION);
     return;
   }
@@ -1153,7 +1184,9 @@ void LoadPreset(SettingsContext* ctx) {
   const std::wstring path = PresetsDir(ctx->config_dir) + L"\\" + name + L".yaml";
   skin::Theme loaded;
   if (!skin::LoadThemeFromYaml(ToUtf8(path), &loaded)) {
-    MessageBoxW(ctx->dlg, L"加载配置失败：文件缺失或格式错误。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorLoadPreset),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONERROR);
     return;
   }
@@ -1173,7 +1206,9 @@ void DeletePreset(SettingsContext* ctx) {
   const HWND combo = GetDlgItem(ctx->dlg, kComboPreset);
   const int sel = static_cast<int>(SendMessageW(combo, CB_GETCURSEL, 0, 0));
   if (sel == CB_ERR) {
-    MessageBoxW(ctx->dlg, L"请先在下拉框选择一个配置。", L"Beautype 设置",
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorSelectPreset),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
                 MB_OK | MB_ICONINFORMATION);
     return;
   }
@@ -1182,7 +1217,10 @@ void DeletePreset(SettingsContext* ctx) {
   const std::wstring path = PresetsDir(ctx->config_dir) + L"\\" + name + L".yaml";
   std::error_code ec;
   if (!std::filesystem::remove(std::filesystem::path(path), ec) || ec) {
-    MessageBoxW(ctx->dlg, L"删除配置失败。", L"Beautype 设置", MB_OK | MB_ICONERROR);
+    MessageBoxW(ctx->dlg,
+                ime::i18n::TrW(ime::i18n::Str::kErrorDeletePreset),
+                ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+                MB_OK | MB_ICONERROR);
     return;
   }
   RefreshPresetCombo(ctx);
@@ -1387,7 +1425,8 @@ void PaintPanel(SettingsContext* ctx, HWND hwnd) {
     g.FillRectangle(&bg, Gdiplus::RectF(0.0f, 0.0f, static_cast<float>(Wp),
                                         static_cast<float>(Hp)));
     // 顶部标题
-    DrawTextC(g, L"Beautype 皮肤设置", L"Microsoft YaHei UI", 22.0f, 0, 12, g_pal->accent,
+    DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kSettingsSkinTitle),
+              L"Microsoft YaHei UI", 22.0f, 0, 12, g_pal->accent,
               true, 1, Wp);
     const int c1x = 14, c1w = W - 28;
     // v4.3：垂直布局随窗口高度拉伸（卡间距动态，拉高窗口界面跟着拉伸）
@@ -1397,20 +1436,26 @@ void PaintPanel(SettingsContext* ctx, HWND hwnd) {
     const int c0y = 16, c0h = 84;
     FillRoundRect(g, c1x, c0y, c1w, c0h, 6, g_pal->card);
     DrawRoundRect(g, c1x, c0y, c1w, c0h, 6, g_pal->card_border);
-    DrawTextC(g, L"配置管理", L"Microsoft YaHei UI", 12.0f, c1x + 16, c0y + 9,
+    DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kPresetSection),
+              L"Microsoft YaHei UI", 12.0f, c1x + 16, c0y + 9,
               g_pal->accent, true);
     // 卡片1：颜色（y=114 h=156；v3.5 卡片间距 10→14、卡高 146→156 拉开呼吸感）
     // 卡片圆角 6px = 设计稿 v3（.card border-radius: 6px；此前 14px 与设计稿不符）
     const int c1y = c0y + c0h + gap, c1h = 156;
     FillRoundRect(g, c1x, c1y, c1w, c1h, 6, g_pal->card);
     DrawRoundRect(g, c1x, c1y, c1w, c1h, 6, g_pal->card_border);
-    DrawTextC(g, L"颜 色", L"Microsoft YaHei UI", 12.0f, c1x + 16, c1y + 9, g_pal->accent, true);
+    DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kColorSection),
+              L"Microsoft YaHei UI", 12.0f, c1x + 16, c1y + 9, g_pal->accent, true);
     {
       // v3.1：2×2 两列。左列 = 背景色/高亮文字色，右列 = 正文色/高亮底色。
       // 色块在 (c1x+16|c1x+222, c1y+46|c1y+96) 26×26（设计稿 26×26 圆角 4），
       // 名称在色块右 40px，hex 紧贴名称。
-      const wchar_t* names_l[2] = {L"背景色", L"高亮文字色"};
-      const wchar_t* names_r[2] = {L"正文色", L"高亮底色"};
+      const wchar_t* names_l[2] = {
+          ime::i18n::TrW(ime::i18n::Str::kColorBackground),
+          ime::i18n::TrW(ime::i18n::Str::kColorHighlightText)};
+      const wchar_t* names_r[2] = {
+          ime::i18n::TrW(ime::i18n::Str::kColorText),
+          ime::i18n::TrW(ime::i18n::Str::kColorHighlightBackground)};
       const int rows[2] = {46, 92};
       const int name_x_l = c1x + 16 + 26 + 8;    // = c1x + 50
       // 右列文字随卡片宽右对齐（与 RelayoutControls 的右列色块同源：
@@ -1451,7 +1496,8 @@ void PaintPanel(SettingsContext* ctx, HWND hwnd) {
     const int c2y = c1y + c1h + gap, c2h = 66;
     FillRoundRect(g, c1x, c2y, c1w, c2h, 6, g_pal->card);
     DrawRoundRect(g, c1x, c2y, c1w, c2h, 6, g_pal->card_border);
-    DrawTextC(g, L"字 体", L"Microsoft YaHei UI", 12.0f, c1x + 16, c2y + 9, g_pal->accent, true);
+    DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kFontSection),
+              L"Microsoft YaHei UI", 12.0f, c1x + 16, c2y + 9, g_pal->accent, true);
     {
       // 字体名（与「选择字体…」按钮同排，设计稿 font-row：字体名左、按钮右）
       wchar_t font_buf[96];
@@ -1468,24 +1514,28 @@ void PaintPanel(SettingsContext* ctx, HWND hwnd) {
     const int c3y = c2y + c2h + gap, c3h = 280;  // v2.1：布局卡移除后加高皮肤模式卡，元素垂直排开
     FillRoundRect(g, c1x, c3y, c1w, c3h, 6, g_pal->card);
     DrawRoundRect(g, c1x, c3y, c1w, c3h, 6, g_pal->card_border);
-    DrawTextC(g, L"皮肤模式", L"Microsoft YaHei UI", 12.0f, c1x + 16, c3y + 9,
+    DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kSkinModeSection),
+              L"Microsoft YaHei UI", 12.0f, c1x + 16, c3y + 9,
               g_pal->accent, true);
     const bool frame_mode = ctx->draft.skin.mode == skin::SkinMode::Frame;
     // 上传行：按钮（控件）在左中，预览缩略在右侧（同设计稿 v3 布局）
     if (!frame_mode) {
-      DrawTextC(g, L"建议 256×256 PNG 透明底", L"Microsoft YaHei UI", 11.0f,
+      DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kRoleHint1),
+                L"Microsoft YaHei UI", 11.0f,
                 c1x + 16, c3y + 98, g_pal->text_sub);
-      DrawTextC(g, L"自动置于候选框右侧，不变形", L"Microsoft YaHei UI", 11.0f, c1x + 16,
+      DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kRoleHint2),
+                L"Microsoft YaHei UI", 11.0f, c1x + 16,
                 c3y + 120, g_pal->text_sub);
       PaintPreview(g, ctx, ctx->draft.skin.role_image, c1x + c1w - 88 - 14, c3y + 120, 88, 56,
-                   L"预览", ctx->config_dir);
+                   ime::i18n::TrW(ime::i18n::Str::kPreview), ctx->config_dir);
     } else {
-      DrawTextC(g, L"建议 600×200 PNG，中间拉伸", L"Microsoft YaHei UI", 11.0f,
+      DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kFrameHint1),
+                L"Microsoft YaHei UI", 11.0f,
                 c1x + 16, c3y + 98, g_pal->text_sub);
       PaintPreview(g, ctx, ctx->draft.skin.frame_image, c1x + c1w - 88 - 14, c3y + 120, 88, 44,
-                   L"预览", ctx->config_dir);
+                   ime::i18n::TrW(ime::i18n::Str::kPreview), ctx->config_dir);
       // 文字区域对齐：预览整张输入框图 + 红色虚线文字区（可拖拽），数值微调在下。
-      DrawTextC(g, L"文字区域对齐：拖拽红色虚线框，对准输入框图片里的实际文字位置",
+      DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kFrameAlignHint),
                 L"Microsoft YaHei UI", 11.0f, c1x + 16, c3y + 144, g_pal->text_sub);
       const int apx = c1x + 16, apy = c3y + 168, apw = c1w - 32, aph = 40;
       // 刷新对齐视图状态（供鼠标命中/拖拽换算）——先清空再按当前图计算
@@ -1554,7 +1604,11 @@ void PaintPanel(SettingsContext* ctx, HWND hwnd) {
       }
       // 对齐数值微调 label（X / Y / 宽 / 高，在编辑框正上方）
       const int tr_edits[4][2] = {{16, 0}, {16 + 90, 0}, {16 + 180, 0}, {16 + 270, 0}};
-      const wchar_t* tr_labels[4] = {L"X", L"Y", L"宽", L"高"};
+      const wchar_t* tr_labels[4] = {
+          ime::i18n::TrW(ime::i18n::Str::kAxisX),
+          ime::i18n::TrW(ime::i18n::Str::kAxisY),
+          ime::i18n::TrW(ime::i18n::Str::kAxisWidth),
+          ime::i18n::TrW(ime::i18n::Str::kAxisHeight)};
       for (int i = 0; i < 4; ++i) {
         DrawTextC(g, tr_labels[i], L"Microsoft YaHei UI", 10.0f, tr_edits[i][0], c3y + 218,
                   g_pal->text_sub, false, 1);
@@ -2058,6 +2112,7 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 bool RunSettingsDialog(HWND owner, const std::string& config_dir,
                        std::function<void(const skin::Theme&)> on_apply) {
+  ime::i18n::ReloadLanguage();
   RefreshPalette();  // 打开时按系统深浅色选调色板（WM_SETTINGCHANGE 实时切换）
   // DPI 缩放：窗口创建前设 scale（基于 owner 所在屏，无 owner 用主屏 dpi）。
   // 声明 Per-Monitor V2 后 GetDpiForWindow 返回真实 dpi，布局按此放大。
@@ -2164,7 +2219,8 @@ bool RunSettingsDialog(HWND owner, const std::string& config_dir,
   // 2026-10-23：不再 WS_EX_TOPMOST 永久置顶（用户反馈设置窗口不应一直悬浮）。
   // "弹出置顶一下"改在 ShowWindow 前 SetWindowPos(TOPMOST) + 显示后 NOTOPMOST 解除。
   HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, kSettingsClass,
-                             L"Beautype 皮肤设置", kSettingsStyle, px, py,
+                             ime::i18n::TrW(ime::i18n::Str::kSettingsSkinTitle),
+                             kSettingsStyle, px, py,
                              frame.right - frame.left, frame.bottom - frame.top, owner, nullptr,
                              hinst, nullptr);
   if (dlg == nullptr) {
@@ -2232,11 +2288,13 @@ bool RunSettingsDialog(HWND owner, const std::string& config_dir,
       }
     }
   }
-  CreateOwnButton(dlg, L"加载", kBtnPresetLoad, DS(16 + 172), DS(c0y + 28), DS(72), DS(28));
-  CreateOwnButton(dlg, L"删除", kBtnPresetDelete, DS(16 + 252), DS(c0y + 28), DS(72), DS(28));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnLoad), kBtnPresetLoad,
+                  DS(16 + 172), DS(c0y + 28), DS(72), DS(28));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnDelete), kBtnPresetDelete,
+                  DS(16 + 252), DS(c0y + 28), DS(72), DS(28));
   CreateEdit(dlg, kEditPresetName, DS(16), DS(c0y + 58), DS(160), false);  // v4.3：配置名可输中文/字母
-  CreateOwnButton(dlg, L"保存当前配置", kBtnPresetSave, DS(16 + 172), DS(c0y + 54), DS(120),
-                  DS(28));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnSavePreset), kBtnPresetSave,
+                  DS(16 + 172), DS(c0y + 54), DS(120), DS(28));
   // 卡片1 颜色（y=114 h=156）：色块（自绘）在左，色值文字由 PaintPanel 画在色块右侧。
   // 色块 26×26 = 设计稿 v3（.color-swatch 26×26）
   // v4.3：垂直间距动态（CardGapForHeight），创建段与 PaintPanel/Relayout 同一公式。
@@ -2247,16 +2305,22 @@ bool RunSettingsDialog(HWND owner, const std::string& config_dir,
   CreateSwatch(dlg, kSwatchHlBg, 14 + 222, c1y + 92, 26, 26);
   // 卡片2 字体：字体名由 PaintPanel 自绘（修「字体白条」），按钮在右
   const int c2y = c1y + 156 + CardGapForHeight(kDlgH);
-  CreateOwnButton(dlg, L"选择字体…", kBtnFont, 330, c2y + 18, 96, 28);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnPickFont), kBtnFont,
+                  330, c2y + 18, 96, 28);
   // 卡片3 皮肤模式 h=272（v2.1 布局卡移除后加高，元素垂直排开）：单选行 y+46
   // （等宽两块 = 设计稿 .mode-option flex:1 平分）、上传按钮 y+90、
   // 文字区域对齐编辑框 y+220（输入框模式显示）
   const int c3y = c2y + 66 + CardGapForHeight(kDlgH);
-  CreateOwnButton(dlg, L"角色图片", kRadioRole, 28, c3y + 46, 197, 28);
-  CreateOwnButton(dlg, L"输入框图片", kRadioFrame, 28 + 197 + 10, c3y + 46, 197, 28);
-  CreateOwnButton(dlg, L"选择图片…", kBtnRoleImage, 230, c3y + 84, 96, 28);
-  CreateOwnButton(dlg, L"选择图片…", kBtnFrameImage, 230, c3y + 84, 96, 28);
-  CreateOwnButton(dlg, L"打开目录", kBtnOpenFolder, 330, c3y + 84, 96, 28);  // v4.5.3
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kRadioRoleImage), kRadioRole,
+                  28, c3y + 46, 197, 28);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kRadioFrameImage), kRadioFrame,
+                  28 + 197 + 10, c3y + 46, 197, 28);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnPickImage), kBtnRoleImage,
+                  230, c3y + 84, 96, 28);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnPickImage), kBtnFrameImage,
+                  230, c3y + 84, 96, 28);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnOpenFolder), kBtnOpenFolder,
+                  330, c3y + 84, 96, 28);  // v4.5.3
   // 文字区域对齐数值微调（X / Y / 宽 / 高，一行 4 个；label 由 PaintPanel 画）
   CreateEdit(dlg, kEditTrX, 16, c3y + 220, 44);
   CreateEdit(dlg, kEditTrY, 16 + 90, c3y + 220, 44);
@@ -2265,9 +2329,12 @@ bool RunSettingsDialog(HWND owner, const std::string& config_dir,
   // v2.1：布局卡（圆角/边距X/间距/行高）整体移除——数值随 theme.yaml，不再提供 UI 自定义。
   // 底部按钮带（y 从窗口底往上算，窗口高度自适应后始终在可视区内）。
   const int btn_y = client_h - 44;
-  CreateOwnButton(dlg, L"恢复默认", kBtnReset, 16, btn_y, 100, 30);
-  CreateOwnButton(dlg, L"保存并应用", kBtnSave, 160, btn_y, 130, 30);
-  CreateOwnButton(dlg, L"关闭", kBtnClose, 330, btn_y, 100, 30);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnReset), kBtnReset,
+                  16, btn_y, 100, 30);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnSaveApply), kBtnSave,
+                  160, btn_y, 130, 30);
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnClose), kBtnClose,
+                  330, btn_y, 100, 30);
 
   RefreshAllControls(&ctx);
   RefreshPresetCombo(&ctx);  // v3：配置管理下拉初始化
@@ -2673,7 +2740,7 @@ void PaintColorPicker(HWND hwnd, ColorPickerContext* ctx) {
 
     // ---- 吸管取色提示（仅 picking 时显示，底部一行）----
     if (ctx->picking) {
-      DrawTextC(g, L"取色中：移动鼠标预览，左键确认，Esc 取消",
+      DrawTextC(g, ime::i18n::TrW(ime::i18n::Str::kPickingHint),
                 L"Microsoft YaHei UI", 11, 14, ch - 22, g_pal->text_sub);
     }
     }
@@ -3160,7 +3227,8 @@ bool RunColorPicker(HWND owner, std::uint32_t* target) {
   RECT frame{0, 0, DS(kCPW), DS(kCPH)};
   AdjustWindowRect(&frame, kCPStyle, FALSE);  // 客户区 → 外框（含标题栏/边框）
   HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, kCPClass,
-                             L"选择颜色", kCPStyle, ox, oy,
+                             ime::i18n::TrW(ime::i18n::Str::kColorPickerTitle),
+                             kCPStyle, ox, oy,
                              frame.right - frame.left, frame.bottom - frame.top,
                              owner, nullptr, hinst, nullptr);
   if (dlg == nullptr) {
@@ -3190,9 +3258,12 @@ bool RunColorPicker(HWND owner, std::uint32_t* target) {
   CreateLabel(dlg, L"B", DS(266), DS(294), DS(12), DS(16), kCPLabelB);
   CreateEdit(dlg, kCPEditB, DS(266), DS(310), DS(66));
   // 按钮行（吸取/确定/取消；确定为主按钮配色）
-  CreateOwnButton(dlg, L"吸取屏幕颜色", kCPBtnPick, DS(14), DS(412), DS(138), DS(32));
-  CreateOwnButton(dlg, L"确定", kCPBtnOk, DS(160), DS(412), DS(92), DS(32));
-  CreateOwnButton(dlg, L"取消", kCPBtnCancel, DS(260), DS(412), DS(92), DS(32));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnPickScreenColor), kCPBtnPick,
+                  DS(14), DS(412), DS(138), DS(32));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnOk), kCPBtnOk,
+                  DS(160), DS(412), DS(92), DS(32));
+  CreateOwnButton(dlg, ime::i18n::TrW(ime::i18n::Str::kBtnCancel), kCPBtnCancel,
+                  DS(260), DS(412), DS(92), DS(32));
   ColorPickerSyncEdits(dlg, &ctx);
   if (owner != nullptr) {
     // 标准模态对话框行为（对齐系统 CHOOSECOLORW）：仅禁用 owner，不隐藏。

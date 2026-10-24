@@ -1,6 +1,7 @@
 // 见 candidate_list.h 顶部注释。实现对齐小狼毫 CCandidateList 的接口语义。
 #include "tsf/candidate_list.h"
 
+#include "i18n/strings.h"
 #include <objbase.h>
 
 namespace ime {
@@ -86,7 +87,9 @@ STDMETHODIMP CandidateListUI::GetDescription(BSTR* pbstr) {
   if (pbstr == nullptr) {
     return E_INVALIDARG;
   }
-  *pbstr = SysAllocString(L"Beautype 候选列表");
+  ime::i18n::ReloadLanguage();
+  *pbstr = SysAllocString(
+      ime::i18n::TrW(ime::i18n::Str::kCandidateListDescription));
   return S_OK;
 }
 

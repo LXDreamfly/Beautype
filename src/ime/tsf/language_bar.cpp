@@ -1,6 +1,8 @@
 // 见 language_bar.h 顶部注释。实现对齐小狼毫 CLangBarItemButton 语义。
 #include "tsf/language_bar.h"
 
+#include "i18n/strings.h"
+
 #include <objbase.h>
 #include <string>
 #include <olectl.h>  // CONNECT_E_*（AdviseSink 错误码）
@@ -161,7 +163,7 @@ STDMETHODIMP LanguageBarButton::GetInfo(TF_LANGBARITEMINFO* pInfo) {
   pInfo->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU |
                    TF_LBI_STYLE_SHOWNINTRAY;
   pInfo->ulSort = 1;
-  lstrcpyW(pInfo->szDescription, L"Beautype 输入法");
+  lstrcpyW(pInfo->szDescription, ime::i18n::TrW(ime::i18n::Str::kBrandDescription));
   return S_OK;
 }
 
@@ -188,8 +190,9 @@ STDMETHODIMP LanguageBarButton::GetTooltipString(BSTR* pbstrToolTip) {
   if (pbstrToolTip == nullptr) {
     return E_INVALIDARG;
   }
-  *pbstrToolTip = SysAllocString(ascii_mode_ ? L"Beautype：英文模式（点击切换中文）"
-                                             : L"Beautype：中文模式（点击切换英文）");
+  *pbstrToolTip = SysAllocString(
+      ascii_mode_ ? ime::i18n::TrW(ime::i18n::Str::kTooltipEnglish)
+                  : ime::i18n::TrW(ime::i18n::Str::kTooltipChinese));
   return (*pbstrToolTip != nullptr) ? S_OK : E_OUTOFMEMORY;
 }
 
@@ -200,22 +203,38 @@ HMENU LanguageBarButton::BuildPopupMenu() {
   if (menu == nullptr) {
     return nullptr;
   }
+  ime::i18n::ReloadLanguage();
+  using ime::i18n::Str;
+  const bool en = ime::i18n::IsEnglish();
   AppendMenuW(menu, MF_STRING, kLangBarAsciiToggle,
-              ascii_mode_ ? L"切换到中文输入" : L"切换到英文输入");
+              ascii_mode_ ? ime::i18n::TrW(Str::kToggleToChinese)
+                          : ime::i18n::TrW(Str::kToggleToEnglish));
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(menu, MF_STRING, kLangBarSettings, L"自定义皮肤");
-  AppendMenuW(menu, MF_STRING, kLangBarDict, L"词典管理");
-  AppendMenuW(menu, MF_STRING, kLangBarSync, L"用户数据同步");
+  AppendMenuW(menu, MF_STRING, kLangBarSettings, ime::i18n::TrW(Str::kMenuSettings));
+  AppendMenuW(menu, MF_STRING, kLangBarDict, ime::i18n::TrW(Str::kMenuDictionary));
+  AppendMenuW(menu, MF_STRING, kLangBarSync, ime::i18n::TrW(Str::kMenuSync));
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(menu, MF_STRING, kLangBarOpenPet, L"打开桌宠");
-  AppendMenuW(menu, MF_STRING, kLangBarPetTop, L"置顶桌宠");
-  AppendMenuW(menu, MF_STRING, kLangBarUserConfig, L"打开用户目录");
-  AppendMenuW(menu, MF_STRING, kLangBarLogDir, L"打开日志目录");
+  AppendMenuW(menu, MF_STRING, kLangBarOpenPet, ime::i18n::TrW(Str::kMenuOpenPet));
+  AppendMenuW(menu, MF_STRING, kLangBarPetTop, ime::i18n::TrW(Str::kMenuPinPet));
+  AppendMenuW(menu, MF_STRING, kLangBarUserConfig, ime::i18n::TrW(Str::kMenuUserDir));
+  AppendMenuW(menu, MF_STRING, kLangBarLogDir, ime::i18n::TrW(Str::kMenuLogDir));
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(menu, MF_STRING, kLangBarDeploy, L"重新部署");
-  AppendMenuW(menu, MF_STRING, kLangBarCheckUpdate, L"检查更新");
+  AppendMenuW(menu, MF_STRING, kLangBarDeploy, ime::i18n::TrW(Str::kMenuDeploy));
+  AppendMenuW(menu, MF_STRING, kLangBarCheckUpdate,
+              ime::i18n::TrW(Str::kMenuCheckUpdate));
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  AppendMenuW(menu, MF_STRING, kLangBarExit, L"退出");
+
+  HMENU lang_menu = CreatePopupMenu();
+  if (lang_menu != nullptr) {
+    AppendMenuW(lang_menu, MF_STRING | (en ? 0 : MF_CHECKED), kLangBarLangZh,
+                ime::i18n::TrW(Str::kLanguageChinese));
+    AppendMenuW(lang_menu, MF_STRING | (en ? MF_CHECKED : 0), kLangBarLangEn,
+                ime::i18n::TrW(Str::kLanguageEnglish));
+    AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(lang_menu),
+                ime::i18n::TrW(Str::kLanguageMenuTitle));
+  }
+  AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenuW(menu, MF_STRING, kLangBarExit, ime::i18n::TrW(Str::kMenuExit));
   return menu;
 }
 
@@ -230,6 +249,11 @@ void LanguageBarButton::HandleMenuCommand(UINT cmd) {
     if (open_pet_cb_) {
       open_pet_cb_();
     }
+  } else if (cmd == kLangBarLangZh || cmd == kLangBarLangEn) {
+    // 界面语言只在本进程切换并写配置；服务端托盘/设置窗下次打开时读配置。
+    ime::i18n::SetLanguage(cmd == kLangBarLangZh ? ime::i18n::Lang::Zh
+                                                 : ime::i18n::Lang::En);
+    NotifyUpdate(TF_LBI_TOOLTIP);
   } else if (cmd != 0 && tray_command_cb_) {
     // 其余菜单项：命令 ID 与服务端托盘 IDM_* 一致，经 TrayCommand IPC 执行
     tray_command_cb_(cmd);
@@ -296,47 +320,40 @@ STDMETHODIMP LanguageBarButton::InitMenu(ITfMenu* pMenu) {
     return E_INVALIDARG;
   }
   // 系统语言栏展开菜单：同右键完整菜单（对齐官方 IDR_MENU_POPUP）
-  const wchar_t* toggle = ascii_mode_ ? L"切换到中文输入" : L"切换到英文输入";
-  pMenu->AddMenuItem(kLangBarAsciiToggle, 0, nullptr, nullptr, toggle,
-                     static_cast<ULONG>(wcslen(toggle)), nullptr);
+  ime::i18n::ReloadLanguage();
+  using ime::i18n::Str;
+  const bool en = ime::i18n::IsEnglish();
+  auto add = [&](UINT id, DWORD flags, const wchar_t* text) {
+    pMenu->AddMenuItem(id, flags, nullptr, nullptr, text,
+                       static_cast<ULONG>(wcslen(text)), nullptr);
+  };
+  add(kLangBarAsciiToggle, 0,
+      ascii_mode_ ? ime::i18n::TrW(Str::kToggleToChinese)
+                  : ime::i18n::TrW(Str::kToggleToEnglish));
   pMenu->AddMenuItem(0, TF_LBMENUF_SEPARATOR, nullptr, nullptr, nullptr, 0,
                      nullptr);
-  const wchar_t* settings = L"自定义皮肤";
-  pMenu->AddMenuItem(kLangBarSettings, 0, nullptr, nullptr, settings,
-                     static_cast<ULONG>(wcslen(settings)), nullptr);
-  const wchar_t* dict = L"词典管理";
-  pMenu->AddMenuItem(kLangBarDict, 0, nullptr, nullptr, dict,
-                     static_cast<ULONG>(wcslen(dict)), nullptr);
-  const wchar_t* sync = L"用户数据同步";
-  pMenu->AddMenuItem(kLangBarSync, 0, nullptr, nullptr, sync,
-                     static_cast<ULONG>(wcslen(sync)), nullptr);
+  add(kLangBarSettings, 0, ime::i18n::TrW(Str::kMenuSettings));
+  add(kLangBarDict, 0, ime::i18n::TrW(Str::kMenuDictionary));
+  add(kLangBarSync, 0, ime::i18n::TrW(Str::kMenuSync));
   pMenu->AddMenuItem(0, TF_LBMENUF_SEPARATOR, nullptr, nullptr, nullptr, 0,
                      nullptr);
-  const wchar_t* open_pet = L"打开桌宠";
-  pMenu->AddMenuItem(kLangBarOpenPet, 0, nullptr, nullptr, open_pet,
-                     static_cast<ULONG>(wcslen(open_pet)), nullptr);
-  const wchar_t* pet_top = L"置顶桌宠";
-  pMenu->AddMenuItem(kLangBarPetTop, 0, nullptr, nullptr, pet_top,
-                     static_cast<ULONG>(wcslen(pet_top)), nullptr);
-  const wchar_t* user = L"打开用户目录";
-  pMenu->AddMenuItem(kLangBarUserConfig, 0, nullptr, nullptr, user,
-                     static_cast<ULONG>(wcslen(user)), nullptr);
-  const wchar_t* logdir = L"打开日志目录";
-  pMenu->AddMenuItem(kLangBarLogDir, 0, nullptr, nullptr, logdir,
-                     static_cast<ULONG>(wcslen(logdir)), nullptr);
+  add(kLangBarOpenPet, 0, ime::i18n::TrW(Str::kMenuOpenPet));
+  add(kLangBarPetTop, 0, ime::i18n::TrW(Str::kMenuPinPet));
+  add(kLangBarUserConfig, 0, ime::i18n::TrW(Str::kMenuUserDir));
+  add(kLangBarLogDir, 0, ime::i18n::TrW(Str::kMenuLogDir));
   pMenu->AddMenuItem(0, TF_LBMENUF_SEPARATOR, nullptr, nullptr, nullptr, 0,
                      nullptr);
-  const wchar_t* deploy = L"重新部署";
-  pMenu->AddMenuItem(kLangBarDeploy, 0, nullptr, nullptr, deploy,
-                     static_cast<ULONG>(wcslen(deploy)), nullptr);
-  const wchar_t* check_update = L"检查更新";
-  pMenu->AddMenuItem(kLangBarCheckUpdate, 0, nullptr, nullptr, check_update,
-                     static_cast<ULONG>(wcslen(check_update)), nullptr);
+  add(kLangBarDeploy, 0, ime::i18n::TrW(Str::kMenuDeploy));
+  add(kLangBarCheckUpdate, 0, ime::i18n::TrW(Str::kMenuCheckUpdate));
   pMenu->AddMenuItem(0, TF_LBMENUF_SEPARATOR, nullptr, nullptr, nullptr, 0,
                      nullptr);
-  const wchar_t* quit = L"退出";
-  pMenu->AddMenuItem(kLangBarExit, 0, nullptr, nullptr, quit,
-                     static_cast<ULONG>(wcslen(quit)), nullptr);
+  add(kLangBarLangZh, en ? 0 : TF_LBMENUF_CHECKED,
+      ime::i18n::TrW(Str::kLanguageChinese));
+  add(kLangBarLangEn, en ? TF_LBMENUF_CHECKED : 0,
+      ime::i18n::TrW(Str::kLanguageEnglish));
+  pMenu->AddMenuItem(0, TF_LBMENUF_SEPARATOR, nullptr, nullptr, nullptr, 0,
+                     nullptr);
+  add(kLangBarExit, 0, ime::i18n::TrW(Str::kMenuExit));
   return S_OK;
 }
 

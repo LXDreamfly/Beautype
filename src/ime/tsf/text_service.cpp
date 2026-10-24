@@ -18,6 +18,7 @@ extern "C" const GUID CLSID_BeautypeTSF;
 // DLL 不加载 librime 引擎），此处仅取常量定义。
 #include "engine/rime_engine.h"
 #include "log/log.h"
+#include "i18n/strings.h"
 
 // 出厂默认桌宠皮肤文件名（统一约定，勿散落硬编码）。
 // 以后想换默认动画：把新做好的 .riv 命名为 beautype_pet.riv 替换安装包里的文件即可，
@@ -954,7 +955,9 @@ class DisplayAttributeInfoImpl final : public ITfDisplayAttributeInfo {
   }
   STDMETHODIMP GetDescription(BSTR* pbstrDesc) override {
     if (pbstrDesc == nullptr) return E_INVALIDARG;
-    *pbstrDesc = SysAllocString(L"Beautype 行内组合");
+    ime::i18n::ReloadLanguage();
+    *pbstrDesc = SysAllocString(
+        ime::i18n::TrW(ime::i18n::Str::kCompositionDescription));
     return (*pbstrDesc == nullptr) ? E_OUTOFMEMORY : S_OK;
   }
   STDMETHODIMP GetAttributeInfo(TF_DISPLAYATTRIBUTE* pAttr) override {

@@ -18,6 +18,7 @@ Typing is the most frequent little thing in our daily lives — why not make it 
 - **A pet that types with you** — built-in Rive animated pet that reacts to your typing; hover, "getting angry", and keystroke hints all come with cute responses.
 - **Pet skin library** — upload local `.riv` files, switch, delete, and restore defaults anytime — a new pet, a new mood.
 - **Multiple input schemes** — Pinyin, Shuangpin (double pinyin) and Wubi, switchable with one key (`F4` scheme menu).
+- **Chinese / English UI** — switch between Chinese and English inside the same installer; no separate English package is required.
 - **Privacy friendly** — 100% local, no telemetry, no account.
 
 ## ⌨ Input Method Features
@@ -60,7 +61,8 @@ Right-click the Beautype icon in the language bar to open the IME menu:
 | Menu Item | Description |
 |---|---|
 | **Switch to Chinese / English input** | Toggle input mode (same as `Ctrl+Shift+2`) |
-| **Customize Skin** | Open the skin settings panel |
+| **Settings** | Open the skin / parameter settings panel |
+| **Interface Language** | Submenu: switch between Chinese and English UI |
 | **Dictionary Manager** | Open the user dictionary directory |
 | **Sync User Data** | Sync user config and dictionary data |
 | **Open Pet** | Launch / spawn another pet |

@@ -30,6 +30,7 @@ CAppModule _Module;
 #include "engine/rime_engine.h"
 #include "log/log.h"
 #include "fs_util.h"
+#include "i18n/strings.h"
 #include "skin/theme.h"
 #include "skin/skin_applier.h"
 #include "server/beautype_handler.h"
@@ -86,6 +87,8 @@ enum {
   IDM_PET_TOP = 1010,       // 置顶桌宠（系统托盘菜单；找回置顶入口：桌宠被遮挡/屏外时拉回）
   IDM_PET_TOP_LANGBAR = 1011, // 置顶桌宠（TSF 语言栏右键菜单，同一置顶逻辑，经 TrayCommand IPC 到达）
   IDM_CHECK_UPDATE = 1012,  // 检查更新（托盘 + TSF 语言栏共用：GitHub Releases 主源 + 镜像兜底）
+  IDM_LANG_ZH = 1013,       // 界面语言：中文（仅服务进程内存态 + 写配置）
+  IDM_LANG_EN = 1014,       // 界面语言：英文
   IDM_SCHEMA_BASE = 1100,   // 方案子菜单起始（+i = 第 i 个方案）
 };
 constexpr UINT kTrayMsg = WM_APP + 100;
@@ -142,7 +145,11 @@ void NotifyBalloon(const wchar_t* title, const wchar_t* text) {
 // 构建托盘弹出菜单（方案子菜单动态：引擎 schema 列表）
 HMENU BuildTrayMenu() {
   HMENU menu = ::CreatePopupMenu();
-  ::AppendMenuW(menu, MF_STRING, IDM_ASCII_TOGGLE, L"中/英 切换");
+  ime::i18n::ReloadLanguage();
+  using ime::i18n::Str;
+  const bool en = ime::i18n::IsEnglish();
+  ::AppendMenuW(menu, MF_STRING, IDM_ASCII_TOGGLE,
+                ime::i18n::TrW(Str::kMenuAsciiToggle));
   // 方案子菜单（引擎 schema 列表）
   HMENU schema_menu = ::CreatePopupMenu();
   if (g_tray.engine != nullptr) {
@@ -154,23 +161,37 @@ HMENU BuildTrayMenu() {
                     name.c_str());
     }
   }
-  ::AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(schema_menu), L"方案");
+  ::AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(schema_menu),
+                ime::i18n::TrW(Str::kMenuSchema));
   ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  ::AppendMenuW(menu, MF_STRING, IDM_DEPLOY, L"重新部署");
-  ::AppendMenuW(menu, MF_STRING, IDM_CHECK_UPDATE, L"检查更新");
-  ::AppendMenuW(menu, MF_STRING, IDM_DICT, L"词典管理");
-  ::AppendMenuW(menu, MF_STRING, IDM_SYNC, L"用户数据同步");
+  ::AppendMenuW(menu, MF_STRING, IDM_DEPLOY, ime::i18n::TrW(Str::kMenuDeploy));
+  ::AppendMenuW(menu, MF_STRING, IDM_CHECK_UPDATE,
+                ime::i18n::TrW(Str::kMenuCheckUpdate));
+  ::AppendMenuW(menu, MF_STRING, IDM_DICT, ime::i18n::TrW(Str::kMenuDictionary));
+  ::AppendMenuW(menu, MF_STRING, IDM_SYNC, ime::i18n::TrW(Str::kMenuSync));
   ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  ::AppendMenuW(menu, MF_STRING, IDM_SETTINGS, L"自定义皮肤");
-  ::AppendMenuW(menu, MF_STRING, IDM_USERCONFIG, L"打开用户目录");
-  ::AppendMenuW(menu, MF_STRING, IDM_LOGDIR, L"打开日志目录");
+  ::AppendMenuW(menu, MF_STRING, IDM_SETTINGS, ime::i18n::TrW(Str::kMenuSettings));
+  ::AppendMenuW(menu, MF_STRING, IDM_USERCONFIG,
+                ime::i18n::TrW(Str::kMenuUserDir));
+  ::AppendMenuW(menu, MF_STRING, IDM_LOGDIR, ime::i18n::TrW(Str::kMenuLogDir));
   // 置顶桌宠（找回置顶入口 2026-10-20）：桌宠未运行时（窗口类不存在）置灰，
   // 防"点了没反应"；运行中点击 = 置顶 + 屏外回移（AddMenuHandler 实现）。
   const bool pet_running = ::FindWindowW(L"BeautypePetPreview", nullptr) != nullptr;
   ::AppendMenuW(menu, MF_STRING | (pet_running ? 0 : MF_GRAYED), IDM_PET_TOP,
-                L"置顶桌宠");
+                ime::i18n::TrW(Str::kMenuPinPet));
   ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-  ::AppendMenuW(menu, MF_STRING, IDM_EXIT, L"退出");
+
+  HMENU lang_menu = ::CreatePopupMenu();
+  if (lang_menu != nullptr) {
+    ::AppendMenuW(lang_menu, MF_STRING | (en ? 0 : MF_CHECKED), IDM_LANG_ZH,
+                  ime::i18n::TrW(Str::kLanguageChinese));
+    ::AppendMenuW(lang_menu, MF_STRING | (en ? MF_CHECKED : 0), IDM_LANG_EN,
+                  ime::i18n::TrW(Str::kLanguageEnglish));
+    ::AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(lang_menu),
+                  ime::i18n::TrW(Str::kLanguageMenuTitle));
+  }
+  ::AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  ::AppendMenuW(menu, MF_STRING, IDM_EXIT, ime::i18n::TrW(Str::kMenuExit));
   return menu;
 }
 
@@ -788,6 +809,23 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpstrCmdLine, int) {
     LaunchDeployer(L"/settings");
     return true;
   });
+  // 界面语言：仅切换服务进程内存态并写配置；TSF DLL / Deployer 下次启动或打开窗口时读取。
+  auto set_tray_language = [](ime::i18n::Lang lang) -> bool {
+    ime::i18n::SetLanguage(lang);
+    wcscpy_s(g_tray.nid.szTip,
+             ime::i18n::TrW(ime::i18n::Str::kBrandDescription));
+    if (g_tray.tray_hwnd != nullptr) {
+      g_tray.nid.uFlags = NIF_TIP;
+      ::Shell_NotifyIconW(NIM_MODIFY, &g_tray.nid);
+    }
+    return true;
+  };
+  server.AddMenuHandler(IDM_LANG_ZH, [set_tray_language]() -> bool {
+    return set_tray_language(ime::i18n::Lang::Zh);
+  });
+  server.AddMenuHandler(IDM_LANG_EN, [set_tray_language]() -> bool {
+    return set_tray_language(ime::i18n::Lang::En);
+  });
   server.AddMenuHandler(IDM_EXIT, [&server]() -> bool {
     // v4.7.7：移除 v4.7.6 托盘退出留痕 LOG（同 /quit 分支，不留垃圾日志）
     server.Stop();
@@ -841,7 +879,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpstrCmdLine, int) {
       nid.hIcon = ::LoadIconW(nullptr, IDI_APPLICATION);  // 兜底
     }
   }
-  wcscpy_s(nid.szTip, L"Beautype 输入法");
+  wcscpy_s(nid.szTip, ime::i18n::TrW(ime::i18n::Str::kBrandDescription));
   // 对齐官方小狼毫：托盘图标默认不显示（WeaselIPCData.h:304 display_tray_icon=false；
   // WeaselTrayIcon.cpp:32-33 Create 后立即 RemoveIcon）。右键菜单入口 = 语言栏按钮
   // 右键（language_bar.cpp OnClick TF_LBI_CLK_RIGHT：中英切换/设置/词典/退出全在）。

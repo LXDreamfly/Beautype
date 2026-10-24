@@ -34,6 +34,11 @@ if(RIME_BEAUTIFY_RELEASE)
   target_compile_definitions(rime_log PUBLIC BEAUTYPE_RELEASE)
 endif()
 
+# --- 运行时界面语言表（中文/英文，单安装包运行时切换；不依赖 librime/yaml-cpp） ---
+add_library(rime_i18n STATIC i18n/strings.cpp)
+target_include_directories(rime_i18n PUBLIC ${IME_INCLUDE_DIR})
+target_compile_features(rime_i18n PUBLIC cxx_std_17)
+
 # --- 引擎封装（链接 rime-static） ---
 # rime_api.h 在 librime 的 src/ 下；build_config.h 等生成头在 rime-build/src 下
 # （librime 自身的 include_directories 只在其子树内生效，须在这里显式补上）。
@@ -71,7 +76,7 @@ add_library(rime_frontend STATIC tsf/text_service.cpp tsf/candidate_list.cpp
             tsf/language_bar.cpp tsf/tsf_guid.cpp)
 target_include_directories(rime_frontend PUBLIC ${IME_INCLUDE_DIR})
 # 服务化：text_service 经官方 Client（rime_ipc）连服务进程，不再引本地引擎
-target_link_libraries(rime_frontend PRIVATE rime_ipc rime_skin rime_ui)
+target_link_libraries(rime_frontend PRIVATE rime_ipc rime_skin rime_ui rime_i18n)
 target_compile_features(rime_frontend PUBLIC cxx_std_17)
 
 # --- 官方 WeaselIPC（服务化：DLL⇄服务进程 管道通信） ---
@@ -140,12 +145,12 @@ set_target_properties(rime_server PROPERTIES OUTPUT_NAME BeautypeServer)
 target_include_directories(rime_server PRIVATE ${IME_INCLUDE_DIR}
   ${WEASEL_DIR}/include ${BOOST_INCLUDE_DIR})
 target_link_libraries(rime_server PRIVATE rime_engine rime_skin rime_ui
-  rime_ipc_server rime_ipc rime_shared gdiplus shell32 shlwapi user32 ole32
+  rime_ipc_server rime_ipc rime_shared rime_i18n gdiplus shell32 shlwapi user32 ole32
   comctl32 comdlg32 ws2_32 ${VCPKG_STATIC_LIB}/leveldb.lib
   ${VCPKG_STATIC_LIB}/glog.lib ${VCPKG_STATIC_LIB}/gflags_static.lib
   winhttp urlmon)
 # 产品版本号（自动更新版本比对用；打包时按版本改写，如 0.9.0 测试版 / 1.0.0 正式版）
-target_compile_definitions(rime_server PRIVATE BEAUTYPE_VERSION="1.0.0")
+target_compile_definitions(rime_server PRIVATE BEAUTYPE_VERSION="1.1.0")
 # 诊断用 MAP 文件（定位崩溃地址符号归属；可随时移除）
 target_link_options(rime_server PRIVATE "/MAP:BeautypeServer.map")
 target_compile_features(rime_server PRIVATE cxx_std_17)
@@ -162,7 +167,7 @@ add_library(rime_tsf SHARED tsf/tsf_dll.cpp tsf/text_service.cpp
 target_include_directories(rime_tsf PUBLIC ${IME_INCLUDE_DIR})
 # 服务化：链接官方 rime_ipc（Client/ResponseParser/PipeChannel），
 # DLL 不再链接 rime_engine（引擎在服务进程）
-target_link_libraries(rime_tsf PRIVATE rime_ipc rime_skin rime_ui uuid)
+target_link_libraries(rime_tsf PRIVATE rime_ipc rime_skin rime_ui rime_i18n uuid)
 target_compile_features(rime_tsf PRIVATE cxx_std_17)
 # 2026-10-14：DLL 输出名统一 beautype_tsf.dll（全程同名，对齐官方 weasel
 # "安装目录名=系统目录名"惯例；此前构建产物 rime_tsf.dll 与注册/系统目录
@@ -198,7 +203,7 @@ if(RIME_BEAUTIFY_BUILD_TESTS AND NOT RIME_BEAUTIFY_BUILD_TSF_X86)
 endif()
 
 if(MSVC)
-  set(_rime_w4_targets rime_log rime_skin rime_ui rime_frontend rime_tsf)
+  set(_rime_w4_targets rime_log rime_i18n rime_skin rime_ui rime_frontend rime_tsf)
   if(NOT RIME_BEAUTIFY_BUILD_TSF_X86)
     list(APPEND _rime_w4_targets rime_engine test_engine test_ui test_tsf)
   endif()

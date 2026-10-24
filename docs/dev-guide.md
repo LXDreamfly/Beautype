@@ -27,12 +27,25 @@ git submodule update --init --recursive
 # x64（System32 / 64 位宿主：Chrome、豆包、explorer 等）
 cmake --build build    --config Release --target rime_tsf
 cmake --build build    --config Release --target rime_server
+cmake --build build    --config Release --target deployer
 
 # x86（SysWOW64 / 32 位宿主：WPS 等）
 cmake --build build-x86 --config Release --target rime_tsf
+cmake --build build-x86 --config Release --target register_tip
 ```
 
 > **双架构必须都编（发版硬性流程）**：TSF DLL 按进程位数加载——64 位进程加载 `System32\beautype_tsf.dll`，32 位进程加载 `SysWOW64\beautype_tsf.dll`。install.nsi 从 `packaging\Beautype\x86\beautype_tsf.dll` 打包 x86 份。**只编 x64 树 → x86 包内 DLL 是旧代码** → 一切"只在 WPS 复现"的缺陷（语言栏右键、owner、ImeActivated）其实都是 x86 DLL 陈旧，不是宿主兼容问题。
+
+> **register_tip.exe 打包必须用 x86 树编译版**（`build-x86\Release\register_tip.exe`，32 位）：register_tip.cpp 逻辑假设 32 位进程利用 WOW64 重定向装 32/64 双 DLL（官方 weasel 做法）；误用 x64 树版本（`build\Release`）会把 32 位 DLL 复制进真 System32、SysWOW64 缺 DLL、64 位 regsvr32 注册失败（安装中止，坑 7.24，2026-10-24）。打包前验证 packaging 目录 register_tip.exe 位数为 x86。
+
+### 测试
+
+```powershell
+ctest -C Release --test-dir build
+```
+
+- 修改语言表、菜单、设置面板或更新弹窗后，先跑 CTest 再打包。
+- 新增 `Str` 枚举时必须同时补中文 / 英文两行；提交前核对枚举数量与语言表行数一致，避免某语言运行时返回空串。
 
 ### 桌宠
 
@@ -60,6 +73,7 @@ NSIS 安装器：安装全部组件（输入法 + 桌宠）、卸载全部清除
 |---|---|
 | `src/shared/ipc/` | 协议帧编解码 + 消息定义（frame.h / ime_protocol.h） |
 | `src/ime/` | 输入法（server / tsf / ui / skin / updater / deploy） |
+| `src/ime/i18n/` | 中 / 英文界面语言表、语言读取与切换状态 |
 | `src/ime/updater/` | 自动更新（GitHub Releases + 镜像兜底 + SHA256 校验） |
 | `tools/` | 桌宠编译脚本等 |
 | `docs/` | 文档（架构 / 协议 / 配置 / 皮肤格式） |

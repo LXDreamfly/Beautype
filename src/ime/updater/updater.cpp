@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "log/log.h"    // ime::g_log / ime::LogF（落到 BeautypeServer.log / rime_tsf.log）
+#include "i18n/strings.h"
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "urlmon.lib")
@@ -604,13 +605,15 @@ void StartCheckUpdate(HWND owner) {
 }
 
 void HandleUpdateMessage(HWND owner, UINT msg) {
+  ime::i18n::ReloadLanguage();
   switch (msg) {
     case kMsgUpdateFound: {
       // 发现新版：弹窗确认（用户拍板交互）
-      std::wstring text = L"发现新版本 " + g_release.tag +
-                          L"，是否下载并安装？\n\n（下载来源：GitHub Releases，"
-                          L"国内网络自动切换镜像兜底）";
-      if (::MessageBoxW(owner, text.c_str(), L"Beautype 检查更新",
+      using ime::i18n::Str;
+      std::wstring text = ime::i18n::Tr(Str::kUpdateFoundPrefix) + g_release.tag +
+                          ime::i18n::Tr(Str::kUpdateFoundSuffix);
+      if (::MessageBoxW(owner, text.c_str(),
+                        ime::i18n::TrW(Str::kUpdateTitle),
                         MB_YESNO | MB_ICONQUESTION | MB_TOPMOST) == IDYES) {
         ::CreateThread(nullptr, 0, DownloadThread, nullptr, 0, nullptr);
       }
@@ -620,9 +623,11 @@ void HandleUpdateMessage(HWND owner, UINT msg) {
       wchar_t tmp[MAX_PATH] = {};
       ::GetTempPathW(MAX_PATH, tmp);
       std::wstring inst = std::wstring(tmp) + kTempInstaller;
-      std::wstring text =
-          L"新版本已下载完成（" + g_release.tag + L"），是否立即运行安装程序？";
-      if (::MessageBoxW(owner, text.c_str(), L"Beautype 检查更新",
+      using ime::i18n::Str;
+      std::wstring text = ime::i18n::Tr(Str::kUpdateReadyPrefix) + g_release.tag +
+                          ime::i18n::Tr(Str::kUpdateReadySuffix);
+      if (::MessageBoxW(owner, text.c_str(),
+                        ime::i18n::TrW(Str::kUpdateTitle),
                         MB_YESNO | MB_ICONQUESTION | MB_TOPMOST) == IDYES) {
         // 运行安装器（安装向导；装完注册表 Run 项拉起新版 server）
         ::ShellExecuteW(owner, L"open", inst.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -632,12 +637,14 @@ void HandleUpdateMessage(HWND owner, UINT msg) {
       break;
     }
     case kMsgUpdateFail:
-      ::MessageBoxW(owner, L"检查更新失败：无法获取最新版本信息。\n请检查网络后重试。",
-                    L"Beautype 检查更新", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+      ::MessageBoxW(owner, ime::i18n::TrW(ime::i18n::Str::kUpdateFail),
+                    ime::i18n::TrW(ime::i18n::Str::kUpdateTitle),
+                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
       break;
     case kMsgUpdateDone:
     default:
-      ::MessageBoxW(owner, L"已是最新版本。", L"Beautype 检查更新",
+      ::MessageBoxW(owner, ime::i18n::TrW(ime::i18n::Str::kUpdateDone),
+                    ime::i18n::TrW(ime::i18n::Str::kUpdateTitle),
                     MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
       break;
   }

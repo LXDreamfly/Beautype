@@ -71,6 +71,8 @@ class LanguageBarButton final : public ITfLangBarItemButton,
     kLangBarOpenPet = 1010,
     kLangBarPetTop = 1011,  // 置顶桌宠（经 TrayCommand IPC → server IDM_PET_TOP_LANGBAR）
     kLangBarCheckUpdate = 1012,  // 检查更新（经 TrayCommand IPC → server IDM_CHECK_UPDATE）
+    kLangBarLangZh = 1013,  // 界面语言：中文（仅本进程内存态 + 写配置，不发 IPC）
+    kLangBarLangEn = 1014,  // 界面语言：英文
   };
   static const UINT kMenuToggleAscii = 1;
   void NotifyUpdate(DWORD dwFlags);
