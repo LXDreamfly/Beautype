@@ -1,0 +1,8 @@
+; rime_tsf.def —— TSF COM DLL 导出（regsvr32 需要 DllRegisterServer，
+; 系统需要 DllGetClassObject；PRIVATE 不生成导入库，COM 场景标准做法）
+LIBRARY rime_tsf
+EXPORTS
+  DllGetClassObject   PRIVATE
+  DllCanUnloadNow     PRIVATE
+  DllRegisterServer   PRIVATE
+  DllUnregisterServer PRIVATE

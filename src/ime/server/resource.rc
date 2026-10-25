@@ -1,0 +1,4 @@
+// Beautype server resources: tray icon + settings window taskbar icon
+#include "resource.h"
+IDI_BEAUTYPE ICON "../tsf/beautype-logo.ico"
+IDI_APP_LOGO ICON "../../assets/brand/beautype-logo-dark.ico"

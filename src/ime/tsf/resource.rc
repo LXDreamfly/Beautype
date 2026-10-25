@@ -1,0 +1,10 @@
+// Beautype TSF 输入法资源
+// IDI_ICON1 在 tsf_dll.cpp 中以 MAKEINTRESOURCE(IDI_ICON1) 使用（RegisterProfile 的图标索引）。
+// Win+Space 切换面板永远是深色底（Mica），注册白蝴蝶版确保可见。
+#define IDI_ICON1       101
+#define IDI_LANGBAR_ZH  102
+#define IDI_LANGBAR_EN  103
+
+IDI_ICON1      ICON "beautype-logo-white.ico"
+IDI_LANGBAR_ZH ICON "langbar-zh.ico"
+IDI_LANGBAR_EN ICON "langbar-en.ico"
