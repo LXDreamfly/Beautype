@@ -48,7 +48,7 @@ std::string ResolveImagePath(const std::string& p, const std::string& yaml_path)
 }
 
 // YAML 双引号标量内反斜杠是转义符（\U/\u/\x 等）：Windows 绝对路径
-// 用户目录 里的 \U 会被 yaml-cpp 当 unicode 转义而解析失败
+// 中的 \U 会被 yaml-cpp 当 unicode 转义而解析失败
 // （实测报 bad character found while scanning hex number）。
 // 写入双引号字符串前必须把 \ 转义为 \\（读回时 yaml-cpp 自动还原）。
 std::string EscapeYamlString(const std::string& s) {
