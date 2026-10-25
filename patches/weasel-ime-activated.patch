@@ -1,0 +1,107 @@
+diff --git a/WeaselIPC/WeaselClientImpl.cpp b/WeaselIPC/WeaselClientImpl.cpp
+index 26122ad..5d090d9 100644
+--- a/WeaselIPC/WeaselClientImpl.cpp
++++ b/WeaselIPC/WeaselClientImpl.cpp
+@@ -138,6 +138,10 @@ void ClientImpl::FocusOut() {
+   _SendMessage(WEASEL_IPC_FOCUS_OUT, 0, session_id);
+ }
+ 
++void ClientImpl::ImeActivated(bool activated) {
++  _SendMessage(WEASEL_IPC_IME_ACTIVATED, activated ? 1 : 0, session_id);
++}
++
+ void ClientImpl::TrayCommand(UINT menuId) {
+   _SendMessage(WEASEL_IPC_TRAY_COMMAND, menuId, session_id);
+ }
+@@ -256,6 +260,10 @@ void Client::FocusOut() {
+   m_pImpl->FocusOut();
+ }
+ 
++void Client::ImeActivated(bool activated) {
++  m_pImpl->ImeActivated(activated);
++}
++
+ void Client::StartSession() {
+   m_pImpl->StartSession();
+ }
+diff --git a/WeaselIPC/WeaselClientImpl.h b/WeaselIPC/WeaselClientImpl.h
+index 7602792..2ff241a 100644
+--- a/WeaselIPC/WeaselClientImpl.h
++++ b/WeaselIPC/WeaselClientImpl.h
+@@ -26,6 +26,7 @@ class ClientImpl {
+   void UpdateInputPosition(RECT const& rc);
+   void FocusIn();
+   void FocusOut();
++  void ImeActivated(bool activated);
+   void TrayCommand(UINT menuId);
+   bool GetResponseData(ResponseHandler const& handler);
+ 
+diff --git a/WeaselIPCServer/WeaselServerImpl.cpp b/WeaselIPCServer/WeaselServerImpl.cpp
+index 0c27644..31cb824 100644
+--- a/WeaselIPCServer/WeaselServerImpl.cpp
++++ b/WeaselIPCServer/WeaselServerImpl.cpp
+@@ -263,6 +263,15 @@ DWORD ServerImpl::OnFocusOut(WEASEL_IPC_COMMAND uMsg,
+   return 0;
+ }
+ 
++DWORD ServerImpl::OnImeActivated(WEASEL_IPC_COMMAND uMsg,
++                                 DWORD wParam,
++                                 DWORD lParam) {
++  if (!m_pRequestHandler)
++    return 0;
++  m_pRequestHandler->ImeActivated(wParam != 0, lParam);
++  return 0;
++}
++
+ DWORD ServerImpl::OnUpdateInputPosition(WEASEL_IPC_COMMAND uMsg,
+                                         DWORD wParam,
+                                         DWORD lParam) {
+@@ -399,6 +408,7 @@ void ServerImpl::HandlePipeMessage(PipeMessage pipe_msg, _Resp resp) {
+   PIPE_MSG_HANDLE(WEASEL_IPC_SHUTDOWN_SERVER, OnShutdownServer)
+   PIPE_MSG_HANDLE(WEASEL_IPC_FOCUS_IN, OnFocusIn)
+   PIPE_MSG_HANDLE(WEASEL_IPC_FOCUS_OUT, OnFocusOut)
++  PIPE_MSG_HANDLE(WEASEL_IPC_IME_ACTIVATED, OnImeActivated)
+   PIPE_MSG_HANDLE(WEASEL_IPC_UPDATE_INPUT_POS, OnUpdateInputPosition)
+   PIPE_MSG_HANDLE(WEASEL_IPC_START_MAINTENANCE, OnStartMaintenance)
+   PIPE_MSG_HANDLE(WEASEL_IPC_END_MAINTENANCE, OnEndMaintenance)
+diff --git a/WeaselIPCServer/WeaselServerImpl.h b/WeaselIPCServer/WeaselServerImpl.h
+index e826d06..176165d 100644
+--- a/WeaselIPCServer/WeaselServerImpl.h
++++ b/WeaselIPCServer/WeaselServerImpl.h
+@@ -59,6 +59,7 @@ class ServerImpl : public CWindowImpl<ServerImpl, CWindow, ServerWinTraits>
+   DWORD OnShutdownServer(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
+   DWORD OnFocusIn(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
+   DWORD OnFocusOut(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
++  DWORD OnImeActivated(WEASEL_IPC_COMMAND uMsg, DWORD wParam, DWORD lParam);
+   DWORD OnUpdateInputPosition(WEASEL_IPC_COMMAND uMsg,
+                               DWORD wParam,
+                               DWORD lParam);
+diff --git a/include/WeaselIPC.h b/include/WeaselIPC.h
+index 27bfd63..6f0a561 100644
+--- a/include/WeaselIPC.h
++++ b/include/WeaselIPC.h
+@@ -23,6 +23,7 @@ enum WEASEL_IPC_COMMAND {
+   WEASEL_IPC_SHUTDOWN_SERVER,
+   WEASEL_IPC_FOCUS_IN,
+   WEASEL_IPC_FOCUS_OUT,
++  WEASEL_IPC_IME_ACTIVATED,
+   WEASEL_IPC_UPDATE_INPUT_POS,
+   WEASEL_IPC_START_MAINTENANCE,
+   WEASEL_IPC_END_MAINTENANCE,
+@@ -80,6 +81,7 @@ struct RequestHandler {
+   }
+   virtual void FocusIn(DWORD param, DWORD session_id) {}
+   virtual void FocusOut(DWORD param, DWORD session_id) {}
++  virtual void ImeActivated(bool activated, DWORD session_id) {}
+   virtual void UpdateInputPosition(RECT const& rc, DWORD session_id) {}
+   virtual void StartMaintenance() {}
+   virtual void EndMaintenance() {}
+@@ -142,6 +144,8 @@ class Client {
+   void FocusIn();
+   // 输入窗口失去焦点
+   void FocusOut();
++  // Beautype 扩展：输入法激活/停用（TSF OnSetFocus fForeground）→ 桌宠显隐
++  void ImeActivated(bool activated);
+   // 托盤菜單
+   void TrayCommand(UINT menuId);
+   // 读取server返回的数据
