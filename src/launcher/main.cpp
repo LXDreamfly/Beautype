@@ -40,7 +40,7 @@ bool LaunchExe(const std::wstring& exe_path) {
   return true;
 }
 
-// 候选路径逐个尝试（先 exe_dir 相对，再已知绝对路径）
+// 候选路径逐个尝试（按传入顺序，先存在者启动）
 bool LaunchFirst(const std::vector<std::wstring>& candidates) {
   for (const auto& c : candidates) {
     if (LaunchExe(c)) return true;
@@ -70,8 +70,8 @@ bool IsRunning(const wchar_t* image_name) {
 void LaunchPet() {
   // 多开：不再 IsRunning 拦截——已有桌宠时点「打开桌宠」即再开一只
   // （pet_preview 槽位锁分配独立位置/皮肤，§单实例已移除）
-  LaunchFirst({g_exe_dir + L"\\pet_preview.exe",
-               });
+  // 桌宠候选仅取 exe 同目录；开发调试请直接运行 tools\smoke\pet_preview.exe
+  LaunchFirst({g_exe_dir + L"\\pet_preview.exe"});
 }
 
 void ShowMenu() {
