@@ -1,4 +1,6 @@
 ﻿; Beautype installation script (完全照官方 weasel install.nsi 写)
+; 所有文件路径均为相对本脚本目录（${__FILEDIR__}，NSIS 3.0+），克隆后无需改路径；
+; 打包前按 README 产物映射把构建产物放入 packaging\Beautype\ 对应位置即可。
 !include FileFunc.nsh
 !include LogicLib.nsh
 !include MUI2.nsh
@@ -151,24 +153,24 @@ program_files:
   ; 复制文件到 $INSTDIR（对齐官方 install.nsi:227-281）
   ; 改名清理：旧版 rime_server.exe 实体删除，避免与新名 BeautypeServer.exe 并存
   Delete "$INSTDIR\rime_server.exe"
-  File "beautype_tsf.dll"
-  File "BeautypeServer.exe"
-  File "register_tip.exe"
-  File "BeautypeDeployer.exe"
+  File "${__FILEDIR__}\beautype_tsf.dll"
+  File "${__FILEDIR__}\BeautypeServer.exe"
+  File "${__FILEDIR__}\register_tip.exe"
+  File "${__FILEDIR__}\BeautypeDeployer.exe"
 
   ; M4：桌宠组件（pet_preview.exe 单文件依赖系统 DLL + ${DEFAULT_RIV} 动画素材）。
   ; rime_server 启动后从注册表 InstallDir 拉起 pet\pet_preview.exe（见 server_main.cpp LaunchPetIfInstalled）。
   SetOutPath "$INSTDIR\pet"
-  File "pet\pet_preview.exe"
-  File "pet\${DEFAULT_RIV}"
+  File "${__FILEDIR__}\pet\pet_preview.exe"
+  File "${__FILEDIR__}\pet\${DEFAULT_RIV}"
 
   ; 复制 32 位 DLL 到 $INSTDIR\x86（对齐官方 install.nsi:240-242 weaselx64.dll）
   SetOutPath "$INSTDIR\x86"
-  File "x86\beautype_tsf.dll"
+  File "${__FILEDIR__}\x86\beautype_tsf.dll"
 
   ; 复制 Rime 数据到 $INSTDIR\data（对齐官方 install.nsi:283-293）
   SetOutPath "$INSTDIR\data\rime"
-  File /r "data\rime\*.*"
+  File /r "${__FILEDIR__}\data\rime\*.*"
 
   SetOutPath $INSTDIR
 
