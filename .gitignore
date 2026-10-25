@@ -1,20 +1,59 @@
 # Build outputs and temporary files (not published to source repo)
 build/
 build-x86/
+build-setup/
+build-tools/
 dist/
 *.log
 *.obj
 *.pdb
 *.exe
 *.dll
+*.lib
 *.zip
+*.dmp
 _backup/
 _dbg_tools/
 _old_pet_unpack/
-_tmp_img/
+.tmp_img/
+.creative-design/
+backup/
+
 # Internal local-only docs (not published)
 AI_HANDBOOK.md
 docs/release-guide.md
 docs/errors-and-lessons.md
+docs/licenses*
+docs/handoff*
+docs/model-specs*
+debug-handoff-prompt.md
+ime-issues-prompt.md
+edge-white-border-debug-prompt.md
+electron-pet-alignment-prompt.md
+跨屏DPI修复交接提示词.md
+退格与吸管修复*.md
+README-preview.html
+README-preview-en.html
+
+# Local machine scripts (not published)
+启动桌宠输入法.bat
+deploy.ps1
+compile_register_tip_x86.cmd
+build_rive_clang.cmd
+tmp-gitlog.txt
+
+# Packaged data copy (repo keeps a single data/rime source of truth)
+packaging/Beautype/data/
+
 # Temporary diagnostic files with _ prefix
 _*
+
+# Third-party fetch targets (cloned by scripts, not published):
+# weasel by scripts\apply-weasel-patch.cmd, librime by scripts\get-librime.cmd
+third_party/weasel/
+third_party/librime/
+third_party/rime-ice/
+third_party/downloads/
+third_party/boost/
+third_party/boost_1_87_0/
+third_party/boost_1_87_0.zip

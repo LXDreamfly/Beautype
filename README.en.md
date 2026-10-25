@@ -61,7 +61,7 @@ Right-click the Beautype icon in the language bar to open the IME menu:
 | Menu Item | Description |
 |---|---|
 | **Switch to Chinese / English input** | Toggle input mode (same as `Ctrl+Shift+2`) |
-| **Settings** | Open the skin / parameter settings panel |
+| **Customize Skin** | Open the skin settings panel |
 | **Interface Language** | Submenu: switch between Chinese and English UI |
 | **Dictionary Manager** | Open the user dictionary directory |
 | **Sync User Data** | Sync user config and dictionary data |
@@ -120,9 +120,85 @@ Other pet abilities:
 - Key mapping / protocol: `docs/ipc-protocol.md`
 - Developer guide: `docs/dev-guide.md`
 
-## 🔨 Building
+## 🔨 Building from source
 
-(For developers) IME: CMake build (see `docs/dev-guide.md`); pet: `tools/smoke/compile_pet.bat`; installer: NSIS (`packaging/`).
+Verified on Windows 10/11 x64 (consistent with `docs/dev-guide.md`). This source repository **does not contain binaries**; installers are published on the **Releases** page.
+
+### Prerequisites
+
+| Dependency | Version | Purpose |
+|---|---|---|
+| Visual Studio 2022 Build Tools | MSVC v143 + Windows SDK ("Desktop development with C++" workload) | C++ compiler |
+| CMake | ≥ 3.20 (bundled with VS2022 Build Tools) | Build system |
+| Git | Windows build | Submodules / patches |
+| vcpkg | triplet `x64-windows-static` (plus `x86-windows-static` for the x86 build); install glog / gflags / leveldb / marisa / opencc / yaml-cpp | librime static dependencies |
+| Boost 1.87.0 | headers (parent dir `C:/boost_inc`) + b2 static libs (x64: `stage/lib`; x86: `stage-x86/lib`, address-model=32) | WeaselIPC serialization |
+| NSIS 3 | packaging step only | Build BeautypeSetup.exe |
+
+### Fetch third-party dependencies (order matters)
+
+```powershell
+git clone --recurse-submodules https://github.com/LXDreamfly/Beautype.git
+# If already cloned without submodules:
+git submodule update --init third_party/rive-runtime
+
+# 1) librime: not distributed with the repo (BSD-3-Clause), pinned at 7bc3fb0
+scripts\get-librime.cmd
+
+# 2) weasel: not distributed with the repo (GPL-3.0), pinned at d73f6295 + local patch
+scripts\apply-weasel-patch.cmd
+
+# 3) rive-runtime: git submodule (upstream 5551696a826) + our build-config patch
+git submodule update --init third_party\rive-runtime
+git -C third_party\rive-runtime apply ..\..\patches\rive-runtime-patches\premake-build-config.patch
+# On Windows, if "patch does not apply" is reported (core.autocrlf=true converts line endings),
+# retry with --ignore-whitespace:
+# git -C third_party\rive-runtime apply --ignore-whitespace ..\..\patches\rive-runtime-patches\premake-build-config.patch
+```
+
+Versions, checksums and licenses of all dependencies: `THIRD-PARTY-NOTICES.md`.
+
+### Build the input method
+
+```powershell
+# x64 (System32 / 64-bit hosts: Chrome, Doubao, explorer, etc.)
+scripts\build-x64.cmd
+
+# x86 (SysWOW64 / 32-bit hosts: WPS etc.; builds only rime_tsf + register_tip)
+scripts\build-x86.cmd
+```
+
+Artifact mapping:
+
+| Artifact | Path | Notes |
+|---|---|---|
+| `beautype_tsf.dll` (x64) | `build\src\ime\Release\beautype_tsf.dll` | 64-bit TSF component |
+| `beautype_tsf.dll` (x86) | `build-x86\src\ime\Release\beautype_tsf.dll` | 32-bit TSF component (PE Machine `0x014C`) |
+| `BeautypeServer.exe` | `build\src\ime\Release\BeautypeServer.exe` | Server process (engine / candidate window / tray) |
+| `BeautypeDeployer.exe` | `build\Release\BeautypeDeployer.exe` | Deploy / settings / sync |
+| `register_tip.exe` | `build-x86\Release\register_tip.exe` | TSF registration tool (**must be x86**; the x64 one under `build\Release` must not be packaged) |
+
+Tests:
+
+```powershell
+ctest -C Release --test-dir build
+```
+
+### Package the installer
+
+```powershell
+makensis packaging\Beautype\install.nsi    # Output: dist\BeautypeSetup.exe
+```
+
+> `install.nsi` currently **copies pre-built exe + riv** and does not compile in-place; installers are published on the Releases page. All file paths in the script are relative to the script directory (`${__FILEDIR__}`); drop the build outputs into the matching locations under `packaging\Beautype\` per the artifact map above before packaging.
+
+### Build the pet separately
+
+```powershell
+tools\smoke\compile_pet.bat    # vcvars64 + cl, links rive static libs (build rive-runtime first)
+```
+
+Pet source entry: `tools\smoke\pet_preview.cpp`. `compile_pet.bat` derives the repo root from the script location (`%~dp0..\..`); build the rive-runtime static libs first (per "Fetch third-party dependencies"), then run it directly.
 
 Tech stack: C++ / TSF / Rime (librime) · rive-runtime (D3D11) · NSIS.
 
