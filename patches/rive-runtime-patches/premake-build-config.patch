@@ -1,0 +1,93 @@
+diff --git a/.gitignore b/.gitignore
+index 45d4187..e934669 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -94,3 +94,7 @@ compile_commands.json
+ # running tests results in this
+ tests/unit_tests/dependencies
+ tests/unit_tests/default.profraw
++
++# 本地备份的依赖 git 元数据（内容已以普通文件入版，2026-10-17）
++**/.git.bak/
++
+diff --git a/cg_renderer/premake5.lua b/cg_renderer/premake5.lua
+index 6488909..942cff9 100644
+--- a/cg_renderer/premake5.lua
++++ b/cg_renderer/premake5.lua
+@@ -11,7 +11,11 @@ do
+ 
+     files({ 'src/**.cpp' })
+ 
+-    fatalwarnings { "All" }
++    filter({ 'toolset:not msc' })
++    do
++        fatalwarnings { "All" }
++    end
++    filter({})
+ 
+     filter('system:windows')
+     do
+diff --git a/decoders/premake5_v2.lua b/decoders/premake5_v2.lua
+index 3753a5f..0ea0a11 100644
+--- a/decoders/premake5_v2.lua
++++ b/decoders/premake5_v2.lua
+@@ -72,7 +72,11 @@ end
+ project('rive_decoders')
+ do
+     kind('StaticLib')
+-    fatalwarnings { "All" }
++    filter({ 'toolset:not msc' })
++    do
++        fatalwarnings { "All" }
++    end
++    filter({})
+ 
+     includedirs({
+         'include',
+diff --git a/premake5_v2.lua b/premake5_v2.lua
+index 40a27c8..93f2dd0 100644
+--- a/premake5_v2.lua
++++ b/premake5_v2.lua
+@@ -185,7 +185,7 @@ do
+         buildoptions({ '-Wno-deprecated-declarations' })
+     end
+ 
+-    filter('options:not for_unreal')
++    filter({ 'options:not for_unreal', 'toolset:not msc' })
+     do
+         fatalwarnings({ 'All' })
+     end
+diff --git a/renderer/premake5_pls_renderer.lua b/renderer/premake5_pls_renderer.lua
+index e77a081..e83c456 100644
+--- a/renderer/premake5_pls_renderer.lua
++++ b/renderer/premake5_pls_renderer.lua
+@@ -347,7 +347,11 @@ do
+         pls_generated_headers,
+     })
+     externalincludedirs({'glad/include'})
+-    fatalwarnings({ 'All' })
++    filter({ 'toolset:not msc' })
++    do
++        fatalwarnings({ 'All' })
++    end
++    filter({})
+ 
+     files({ 'src/*.cpp', 'src/*.hpp', 'src/*.h', 'src/shaders/*.glsl',
+             'src/shaders/*.frag', 'src/shaders/*.vert', 'include/**.hpp', 'include/**.h',
+diff --git a/tests/rive_tools_project.lua b/tests/rive_tools_project.lua
+index 921871f..b503fe5 100644
+--- a/tests/rive_tools_project.lua
++++ b/tests/rive_tools_project.lua
+@@ -83,7 +83,11 @@ function rive_tools_project(name, project_kind)
+         kind(project_kind)
+     end
+ 
+-    fatalwarnings { "All" }
++    filter({ 'toolset:not msc' })
++    do
++        fatalwarnings { "All" }
++    end
++    filter({})
+ 
+     -- Solves link order issue on linux
+     filter({ 'system:linux'})
