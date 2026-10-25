@@ -1,0 +1,90 @@
+# Rime schema
+# encoding: utf-8
+#
+# 敲可愛 Beautype 定制（基于 librime data/minimal 的 luna_pinyin.schema.yaml）：
+#   - 默认简体输出：switches 用传统 simplification 开关并 reset:1（默认「汉字」），
+#     filters 挂 simplifier（opencc t2s）。此前 minimal 用 [zh_trad, zh_simp, zh_hk,
+#     zh_tw] 四态开关且默认 zh_trad，导致真机默认输出繁体（標點符號/爲什麼）。
+#   - 移除 minimal 里依附 cangjie5 词典的 affix/table/reverse_lookup 分支
+#     （data/rime 自包含数据不含 cangjie5；拼音方案不需要倉頡旁路）。
+#   - 标点/按键绑定 import_preset: default（来自定制 default.yaml：上下翻页/左右选词）。
+
+schema:
+  schema_id: luna_pinyin
+  name: 朙月拼音
+  version: "0.15.beautype"
+  author:
+    - 佛振 <chen.sst@gmail.com>
+  description: |
+    敲可愛 Beautype 默認拼音方案（基於 Rime 朙月拼音，默認簡體輸出）。
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, ABC ]
+    abbrev: [ 中, Ａ ]
+  - name: full_shape
+    states: [ 半寬文字, 全寬文字 ]
+    reset: 0  # 2026-10-20 对齐官方「需要记忆的开关不能设定 reset」反面语义：全角不该被记忆，新会话强制回半角（§49）
+  - name: simplification
+    reset: 1
+    states: [ 漢字, 汉字 ]
+    abbrev: [ 繁, 简 ]
+  - name: ascii_punct
+    states: [ 中文標點, 西文標點 ]
+    abbrev: [ '。', '．' ]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - script_translator
+  filters:
+    - simplifier
+    - uniquifier
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  algebra:
+    - erase/^xx$/
+    - abbrev/^([a-z]).+$/$1/
+    - abbrev/^([zcs]h).+$/$1/
+    - derive/^([nl])ve$/$1ue/correction
+    - derive/^([jqxy])u/$1v/correction
+    - derive/un$/uen/correction
+    - derive/ui$/uei/correction
+    - derive/iu$/iou/correction
+    - derive/([aeiou])ng$/$1gn/correction
+    - derive/([dtngkhrzcs])o(u|ng)$/$1o/correction
+    - derive/ong$/on/correction
+    - derive/ao$/oa/correction
+    - derive/([iu])a(o|ng?)$/a$1$2/correction
+
+translator:
+  dictionary: luna_pinyin
+  preedit_format:
+    - xform/([nljqxy])v/$1ü/
+
+punctuator:
+  import_preset: default
+
+key_binder:
+  import_preset: default
+
+recognizer:
+  import_preset: default

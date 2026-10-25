@@ -1,0 +1,186 @@
+# Rime default settings
+# encoding: utf-8
+#
+# 敲可愛 Beautype 定制（基于 librime data/minimal 的 default.yaml 扩展）：
+#   - schema_list：内置 3 个输入方案（拼音 luna_pinyin / 自然碼雙拼 double_pinyin / 五笔86 wubi86）
+#   - key_binder：默认「上下键翻页、左右键选词」（见下方 flip page / select candidate 绑定）
+#   - 切换方案：F4 或 Control+grave 呼出方案菜单；Control+Shift+1 直接切换下一个方案
+# 其余（punctuator 标点、recognizer、ascii_composer）与 librime 官方 minimal 一致。
+
+config_version: "0.16.beautype"
+
+schema_list:
+  - schema: rime_ice
+  - schema: double_pinyin_flypy
+  - schema: wubi86
+
+switcher:
+  caption: 〔方案選單〕
+  hotkeys:
+    - Control+grave
+    - Control+Shift+grave
+    - F4
+  save_options:
+    # 2026-10-20 移除 full_shape：对齐官方注释「需要记忆的开关不能设定 reset」
+    # 的反面语义——全角不该被记忆（F4 菜单切过一次全角会写 var/option/full_shape，
+    # 之后所有新会话 RestoreSavedOptions 自动恢复全角）。现由各 schema 的
+    # full_shape reset: 0 保证新会话强制回半角，save_options 不再参与。
+    - ascii_punct
+    - simplification
+    - extended_charset
+  fold_options: true
+  abbreviate_options: true
+  option_list_separator: '／'
+
+menu:
+  page_size: 6  # v5.x：每页候选数 5→6（对齐微软候选窗数量）
+
+punctuator:
+  # 数字分隔符（librime >= 1.13.0 官方 rime-ice 方案，用户 2026-10-13 拍板采用）：
+  # 数字后按列表内字符时，该字符作为数字的一部分暂不进标点（"1,000"/"12:30"/
+  # "3.14" 连打；双击同一键恢复其标点映射）。行为：数字后按 , . : ' 第一下
+  # 卡组合（不上屏），第二下才出标点——这是 rime-ice 官方默认、全网用户验证
+  # 过的成熟行为（微软输入法无此数字格式识别，故手感不同）。
+  # 官方引擎硬默认 ".:"（punctuator.h L38）；rime-ice 方案在此基础上补千分位
+  # 逗号，即本配置 ",.:"。
+  digit_separators: ",.:"
+  full_shape:
+    ' ' : { commit: '　' }
+    ',' : { commit: ， }
+    '.' : { commit: 。 }
+    '<' : [ 《, 〈, «, ‹ ]
+    '>' : [ 》, 〉, », › ]
+    '/' : [ ／, ÷ ]
+    '?' : { commit: ？ }
+    ';' : { commit: ； }
+    ':' : { commit: ： }
+    '''' : { pair: [ '‘', '’' ] }
+    '"' : { pair: [ '“', '”' ] }
+    '\' : [ 、, ＼ ]
+    '|' : [ ・, ｜, '§', '¦' ]
+    '`' : ｀
+    '~' : [ 〜, ～, 〰 ]
+    '!' : { commit: ！ }
+    '@' : [ ＠, ☯ ]
+    '#' : [ ＃, ⌘ ]
+    '%' : [ ％, '°', '℃' ]
+    '$' : [ ￥, '$', '€', '£', '¥', '¢', '¤' ]
+    '^' : { commit: …… }
+    '&' : ＆
+    '*' : [ ＊, ・, ·, ×, ※, ❂ ]
+    '(' : （
+    ')' : ）
+    '-' : －
+    '_' : ——
+    '+' : ＋
+    '=' : ＝
+    '[' : [ 「, 【, 〔, ［ ]
+    ']' : [ 」, 】, 〕, ］ ]
+    '{' : [ 『, 〖, ｛ ]
+    '}' : [ 』, 〗, ｝ ]
+  half_shape:
+    ',' : { commit: ， }
+    '.' : { commit: 。 }
+    '<' : [ 《, 〈, «, ‹ ]
+    '>' : [ 》, 〉, », › ]
+    '/' : [ 、, '/', ／, ÷ ]
+    '?' : { commit: ？ }
+    ';' : { commit: ； }
+    ':' : { commit: ： }
+    '''' : { pair: [ '‘', '’' ] }
+    '"' : { pair: [ '“', '”' ] }
+    '\' : [ 、, '\', ＼ ]
+    '|' : [ ・, '|', ｜, '§', '¦' ]
+    '`' : '`'
+    '~' : [ '~', 〜, ～, 〰 ]
+    '!' : { commit: ！ }
+    '@' : '@'
+    '#' : '#'
+    '%' : [ '%', ％, '°', '℃' ]
+    '$' : [ ￥, '$', '€', '£', '¥', '¢', '¤' ]
+    '^' : { commit: …… }
+    '&' : '&'
+    '*' : [ '*', ＊, ・, ·, ×, ※, ❂ ]
+    '(' : （
+    ')' : ）
+    '-' : '-'
+    '_' : ——
+    '+' : '+'
+    '=' : '='
+    '[' : [ 「, 【, 〔, ［ ]
+    ']' : [ 」, 】, 〕,  ］ ]
+    '{' : [ 『, 〖, ｛ ]
+    '}' : [ 』, 〗, ｝ ]
+
+key_binder:
+  bindings:
+    # Emacs style（与 librime 官方默认一致）
+    - { when: composing, accept: Control+p, send: Up }
+    - { when: composing, accept: Control+n, send: Down }
+    - { when: composing, accept: Control+b, send: Left }
+    - { when: composing, accept: Control+f, send: Right }
+    - { when: composing, accept: Control+a, send: Home }
+    - { when: composing, accept: Control+e, send: End }
+    - { when: composing, accept: Control+d, send: Delete }
+    - { when: composing, accept: Control+k, send: Shift+Delete }
+    - { when: composing, accept: Control+g, send: Escape }
+    - { when: composing, accept: Alt+v, send: Page_Up }
+    - { when: composing, accept: Control+v, send: Page_Down }
+    # move by word
+    - { when: composing, accept: ISO_Left_Tab, send: Shift+Left }
+    - { when: composing, accept: Shift+Tab, send: Shift+Left }
+    - { when: composing, accept: Tab, send: Shift+Right }
+    # flip page —— 对齐雾凇官方（rime-ice-main/default.yaml）：翻页 = - / =。
+    # 注意：librime 键名表只认首字母大写（Up/Down/Left/Right），小写会报
+    # key_event.cc unrecognized key；minus/equal/comma/period 小写是合法键名。
+    # Up/Down 不再在此绑定（2026-10-10，对齐雾凇官方）：交 selector 处理器
+    # 选词；Left/Right 不再绑定（交 navigator 处理器移动拼音光标）。
+    - { when: paging, accept: minus, send: Page_Up }
+    - { when: has_menu, accept: equal, send: Page_Down }
+    # 用户确认（2026-10-04）：不要 , . 翻页（会与标点输入冲突）；
+    # plus（shift+=）与 equal 同语义翻下页，与 minus 对称。键名已对照
+    # librime 源码 key_table.cc 验证存在（"plus" 为合法键名）。
+    - { when: has_menu, accept: plus, send: Page_Down }
+    # hotkey switch（方案切换：Control+Shift+1 下一个方案；其余为开关项）
+    # 2026-10-20 对齐 rime-ice 官方键位（errors-and-lessons §20/§49）：
+    #   - 移除 Shift+space toggle full_shape（官方为注释状态；打标点后 Shift 未弹起
+    #     按空格会误触翻全角——根因见 §20，日志 18 次 mask=0x01 空格实锤）
+    #   - Control+Shift+3 恢复官方「切换中英标点」（此前被改绑 full_shape）
+    #   - full_shape 显式切换改绑官方注释块键位 Control+Shift+5
+    #   - wubi86 增广字符集不再占快捷键（官方无此键），经 F4 方案菜单切换
+    - { when: always, accept: Control+Shift+1, select: .next }
+    - { when: always, accept: Control+Shift+2, toggle: ascii_mode }
+    - { when: always, accept: Control+Shift+3, toggle: ascii_punct }
+    - { when: always, accept: Control+Shift+4, toggle: simplification }
+    - { when: always, accept: Control+Shift+5, toggle: full_shape }
+    - { when: always, accept: Control+period, toggle: ascii_punct }
+
+# 处理输入栏内光标的移动 —— 对齐雾凇官方（rime-ice-main/default.yaml:90-96）
+# 需要 librime >= 1.16.0 才有 no_loop 等属性，才会自动在方案引用 default:/{navigator,selector}
+# 按字符移动（不循环）       left_by_char_no_loop | right_by_char_no_loop
+# 按音节跳转（不循环）       left_by_syllable_no_loop | right_by_syllable_no_loop
+navigator:
+  bindings:
+    Left: left_by_char_no_loop
+    Right: right_by_char_no_loop
+    Shift+Left: left_by_syllable
+    Shift+Right: right_by_syllable
+    # 其他键 KP_Left KP_Right Home KP_Home End KP_End
+
+recognizer:
+  patterns:
+    email: "^[a-z][-_.0-9a-z]*@.*$"
+    uppercase: "[A-Z][-_+.'0-9A-Za-z]*$"
+    url: "^(www[.]|https?:|ftp:|mailto:).*$|^[a-z]+[.].+$"
+
+ascii_composer:
+  good_old_caps_lock: true  # 官方 rime-ice（rime-ice-main/default.yaml:73）
+  switch_key:
+    Caps_Lock: clear        # 大写锁：清空组合并切换中英（rime-ice 官方配置）
+    Shift_L: commit_code    # 官方 rime-ice 默认（rime-ice-main/default.yaml:76）：
+                            # 切换时提交拼音编码再切。修复前用 inline_ascii——
+                            # librime 1.17.0 不识别该值 → switch_key 整项失效 →
+                            # Shift 切换完全无响应（真机 2026-10-07）
+    Shift_R: noop           # 官方 rime-ice 默认（rime-ice-main/default.yaml:77）
+    Control_L: noop
+    Control_R: noop
