@@ -74,7 +74,7 @@ const std::wstring& Table(Str id, Lang lang) {
       // 语言栏 / 服务托盘共用菜单
       {L"切换到中文输入", L"Switch to Chinese input"},
       {L"切换到英文输入", L"Switch to English input"},
-      {L"设置", L"Settings"},
+      {L"自定义皮肤", L"Customize Skin"},
       {L"词典管理", L"Dictionary Manager"},
       {L"用户数据同步", L"Sync User Data"},
       {L"打开桌宠", L"Open Pet"},

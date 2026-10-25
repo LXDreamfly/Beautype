@@ -22,6 +22,44 @@ namespace {
 const CLSID kClsidBeautypeTSF = {
     0xB17E78C8, 0xABAF, 0x4891, {0x84, 0x41, 0x42, 0xFC, 0x45, 0xF4, 0x75, 0xA4}};
 
+// 【深色菜单】原生 TrackPopupMenu（语言栏右键菜单）不会自动跟随系统深浅色——
+// 是否深色取决于宿主进程有没有自己开过 SetPreferredAppMode(AllowDark)。Beautype
+// 此前从未调用，导致在 WPS 等宿主里菜单恒为白色（设置窗/候选窗是自绘，自己读
+// 注册表换调色板，故能跟随；原生菜单不行）。修复：弹菜单前若系统为深色
+// （AppsUseLightTheme=0），动态加载 uxtheme.dll 序数 135 调 SetPreferredAppMode
+// (AllowDark)，使本进程原生菜单跟随系统深色。Win10 1809+；旧版 GetProcAddress
+// 失败则跳过（菜单保持系统默认）。只开"跟随深色"的开关，不 ForceDark，浅色系统
+// 仍浅色。系统浅色时不调用，避免对宿主进程（WPS 等）原生 UI 产生任何影响。
+static bool SystemIsDarkForMenu() {
+  HKEY hk = nullptr;
+  if (::RegOpenKeyExW(HKEY_CURRENT_USER,
+                      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                      0, KEY_READ, &hk) != ERROR_SUCCESS) {
+    return false;
+  }
+  DWORD value = 1, size = sizeof(value), type = 0;
+  const LONG ret = ::RegQueryValueExW(hk, L"AppsUseLightTheme", nullptr, &type,
+                                      reinterpret_cast<LPBYTE>(&value), &size);
+  ::RegCloseKey(hk);
+  return ret == ERROR_SUCCESS && value == 0;
+}
+static void EnableNativeMenuDarkMode() {
+  if (!SystemIsDarkForMenu()) {
+    return;
+  }
+  HMODULE ux = ::LoadLibraryW(L"uxtheme.dll");
+  if (ux == nullptr) {
+    return;
+  }
+  typedef int(WINAPI* PFNSetPreferredAppMode)(int);  // PreferredAppMode::AllowDark = 1
+  PFNSetPreferredAppMode fn =
+      reinterpret_cast<PFNSetPreferredAppMode>(::GetProcAddress(ux, MAKEINTRESOURCEA(135)));
+  if (fn != nullptr) {
+    fn(1);
+  }
+  ::FreeLibrary(ux);
+}
+
 // 程序化绘制 16x16 语言栏图标（中文态“中”/英文态“A”），避免依赖外部图标文件
 HICON MakeTextIcon(const wchar_t* text, COLORREF bg, COLORREF fg) {
   const int kSize = 16;
@@ -281,6 +319,7 @@ STDMETHODIMP LanguageBarButton::OnClick(TfLBIClick click, POINT pt,
     }
     HMENU menu = BuildPopupMenu();
     if (menu != nullptr) {
+      EnableNativeMenuDarkMode();  // 原生菜单跟随系统深浅色（WPS 等宿主也生效）
       const UINT cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY |
                                                 TPM_RIGHTBUTTON,
                                       pt.x, pt.y, 0, hwnd, nullptr);
