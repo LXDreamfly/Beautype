@@ -88,6 +88,10 @@ call_uninstaller:
   Sleep 2000
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
+  ; 2026-10-27 真机踩坑：设置窗常开时 BeautypeDeployer.exe 常驻锁自身文件，
+  ; NSIS File 覆盖静默跳过 → 升级后 deployer 仍是旧版。必须在写文件前杀干净。
+  nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
+  Sleep 500
   ; v4.7.11：升级路径同样清理桌宠——旧版 pet_preview.exe 常驻会占用文件锁，
   ; 安装段 SetOverwrite try 复制新桌宠静默失败 → 残留旧 exe（带黑屏/右键菜单旧问题，
   ; 真机"覆盖安装后仍有旧问题"踩坑 2026-10-18；对齐卸载段 250-252 行做法）
@@ -137,6 +141,10 @@ Section "Beautype"
   Sleep 2000
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
+  ; 2026-10-27：安装段同样杀 deployer——否则设置窗常开时 deployer.exe 被锁，
+  ; File 覆盖静默跳过留下旧版。
+  nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
+  Sleep 500
 
   ; 对齐官方 install.nsi:217 SetOverwrite try
   SetOverwrite try
@@ -268,6 +276,10 @@ Section "Uninstall"
   Sleep 2000
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
+  ; 2026-10-27：卸载段同样杀 deployer——否则设置窗常开时 deployer.exe 被锁，
+  ; Delete 静默失败留下旧 exe 残留。
+  nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
+  Sleep 500
   ; M4+：桌宠进程也杀——否则 pet_preview.exe 被占用，RMDir /r "$INSTDIR\pet"
   ; 静默失败留下 exe+riv 残留（真机卸载验证踩坑 2026-10-14）
   nsExec::Exec 'taskkill /f /im pet_preview.exe'
