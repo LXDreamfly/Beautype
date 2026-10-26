@@ -2409,6 +2409,11 @@ bool RunSettingsDialog(HWND owner, const std::string& config_dir,
   ::SendMessageW(dlg, WM_SETREDRAW, TRUE, 0);
   ::RedrawWindow(dlg, nullptr, nullptr,
                  RDW_ALLCHILDREN | RDW_ERASE | RDW_FRAME | RDW_INVALIDATE);
+  // 2026-10-27 回归修复（首帧黑白色块）：WM_ERASEBKGND 已改 return 1（修拖动闪动），
+  // 类背景 hbrBackground=nullptr，ShowWindow 后系统才异步发 WM_PAINT——显示到首帧
+  // 画完之间无任何擦背景，露出屏幕旧内容 → 黑一块白一块。窗口创建不带 WS_VISIBLE
+  // （m1 §30），这里在显示前 UpdateWindow 强制同步画完整帧：不画好不显示。
+  ::UpdateWindow(dlg);
   // 弹出瞬间置顶一下，随后解除永久置顶（2026-10-23 用户反馈：设置窗口
   // 不应一直悬浮在最前；原 WS_EX_TOPMOST 已移除）。TOPMOST→Show→前台→NOTOPMOST，
   // 保证弹出时可见可聚焦，之后可被其他窗口自然覆盖。
@@ -3326,6 +3331,9 @@ bool RunColorPicker(HWND owner, std::uint32_t* target) {
   ::SendMessageW(dlg, WM_SETREDRAW, TRUE, 0);
   ::RedrawWindow(dlg, nullptr, nullptr,
                  RDW_ALLCHILDREN | RDW_ERASE | RDW_FRAME | RDW_INVALIDATE);
+  // 2026-10-27 回归修复（同父级首帧黑白色块）：显示前 UpdateWindow 同步画完整帧，
+  // 杜绝 ShowWindow 到首帧 WM_PAINT 之间露未绘制内容（WM_ERASEBKGND 已 return 1）。
+  ::UpdateWindow(dlg);
   // 用户要求：颜色取色器窗口「刚打开时置顶（让用户能找到），显示后解除」，
   // 不一直悬浮最前。创建时已带 WS_EX_TOPMOST 保证弹出在最前，这里显示+抢
   // 前台后立即解除永久置顶，之后可被其他窗口自然覆盖（吸管取色时再临时置顶）。

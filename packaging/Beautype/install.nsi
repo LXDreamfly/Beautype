@@ -9,7 +9,7 @@
 
 Unicode true
 
-!define BEAUTYPE_VERSION 1.1.1
+!define BEAUTYPE_VERSION 1.1.2
 !define REG_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Beautype"
 ; 出厂默认桌宠皮肤文件名（与 src 三处 kDefaultRivName 约定一致；换默认动画时
 ; 把新 .riv 命名为 beautype_pet.riv 替换 packaging\Beautype\pet\ 下同名文件即可）
