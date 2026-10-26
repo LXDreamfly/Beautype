@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -37,13 +38,19 @@ std::string WidenPathToUtf8(const std::wstring& ws) {
 
 // 解析背景图路径：绝对路径原样用；相对路径以 theme.yaml 所在目录为基准
 // （用户把 PNG 与 theme.yaml 放同一配置目录，填文件名即可）。
+// 2026-10-27 真机根因：yaml_path 是 UTF-8 窄字符串（presets 下文件名可能含中文
+// 如"bt兔.yaml"），std::filesystem::path(窄string) 构造器按系统 ANSI 代码页(GBK)
+// 解释 UTF-8 字节——"兔"的 UTF-8 序列 E5 85 94 被 GBK 误读成非法双字节对 →
+// 抛 std::system_error "No mapping for the Unicode character exists in the
+// target multi-byte code page" → 未捕获 → std::terminate → __fastfail(7) →
+// 0xc0000409 闪退（三次崩溃同偏移 0x1d2995 实证）。必须用 u8path 显式按 UTF-8 解释。
 std::string ResolveImagePath(const std::string& p, const std::string& yaml_path) {
-  const std::filesystem::path raw(p);
   if (p.empty()) return "";  // 空字符串直接返回空，不要解析成目录路径！
+  const std::filesystem::path raw(p);
   if (raw.is_absolute()) {
     return p;
   }
-  const std::filesystem::path base = std::filesystem::path(yaml_path).parent_path();
+  const std::filesystem::path base = std::filesystem::u8path(yaml_path).parent_path();
   return WidenPathToUtf8((base / raw).wstring());
 }
 
@@ -201,7 +208,18 @@ bool LoadThemeFromYaml(const std::string& path, Theme* out) {
   }
   YAML::Node root;
   try {
-    root = YAML::LoadFile(path);
+    // 中文配置名读盘修复（与 WriteThemeToYaml 写盘对称）：YAML::LoadFile 内部用
+    // 窄 fopen，Windows 按 GBK 解释 UTF-8 字节 → bt兔.yaml 等中文文件名直接 bad file
+    // 打不开。改为 u8path 转宽字符路径 → ifstream 读全文到内存 → YAML::Load 字符串。
+    const std::filesystem::path fs_path = std::filesystem::u8path(path);
+    std::ifstream in(fs_path, std::ios::binary);
+    if (!in) {
+      ::ime::LogF( "[skin] theme.yaml 打开失败(宽字符路径): %s\n", path.c_str());
+      return false;
+    }
+    std::ostringstream ss;
+    ss << in.rdbuf();
+    root = YAML::Load(ss.str());
   } catch (const YAML::Exception& e) {
     ::ime::LogF( "[skin] theme.yaml 解析失败: %s\n", e.what());
     return false;
@@ -211,6 +229,11 @@ bool LoadThemeFromYaml(const std::string& path, Theme* out) {
     return false;
   }
 
+  // 2026-10-27 防御：字段解析（ResolveImagePath / as<>() 转换）可能抛
+  // std::system_error / BadConversion（如含中文的 UTF-8 路径被窄构造误解释）。
+  // 原 try 只包 YAML::Load，此处异常会一路逃到消息循环 → terminate → 0xc0000409
+  // 无日志闪退。包进 try 落日志后返回 false，让 LoadPreset 走 MessageBox 错误分支。
+  try {
   Theme t = DefaultTheme();
   if (root["name"]) {
     t.name = root["name"].as<std::string>();
@@ -281,6 +304,10 @@ bool LoadThemeFromYaml(const std::string& path, Theme* out) {
 
   *out = std::move(t);
   return true;
+  } catch (const std::exception& e) {
+    ::ime::LogF( "[skin] theme.yaml 字段解析抛异常(已捕获): %s\n", e.what());
+    return false;
+  }
 }
 
 }  // namespace ime::skin

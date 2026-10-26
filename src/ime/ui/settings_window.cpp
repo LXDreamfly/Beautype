@@ -26,6 +26,7 @@
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <mutex>
 #include <string>
 
 #include <windows.h>
@@ -652,6 +653,15 @@ void RefreshAllControls(SettingsContext* ctx) {
   // v2.1：布局卡（圆角/边距X/间距/行高）已整体移除，数值随 theme.yaml，不再有编辑框。
   RefreshSkinModeControls(ctx);  // v3：radio 自绘态 + 输入框模式控件显隐 + 对齐数值
   InvalidateRect(ctx->dlg, nullptr, TRUE);
+  // 2026-10-27 加载预设/恢复默认后预览不全刷修复：色块（kSwatchBg..kSwatchHlBg）
+  // 是独立子窗口，由 WM_DRAWITEM 从 swatch_colors 自绘——父窗 InvalidateRect
+  // 只失效父窗自身区域，不会触发子窗 WM_PAINT。此前只 InvalidateRect(dlg)，
+  // 加载 boo 后色块仍显示 bt 兔 的旧颜色（真机回归）。这里 EnumChildWindows
+  // 把全部子控件（自绘色块/按钮/编辑框/下拉框）逐个失效，父窗 + 子窗一起重绘。
+  EnumChildWindows(ctx->dlg, [](HWND child, LPARAM) -> BOOL {
+    InvalidateRect(child, nullptr, TRUE);
+    return TRUE;
+  }, 0);
 }
 
 // ---- v3 皮肤模式二选一：按 draft.skin.mode 显示/隐藏输入框模式的专属控件 ----
@@ -1131,6 +1141,17 @@ void SavePreset(SettingsContext* ctx) {
   }
   const std::wstring path =
       PresetsDir(ctx->config_dir) + L"\\" + trimmed + L".yaml";
+  // 2026-10-27 用户明确要求：同名预设已存在时弹"是否覆盖"确认，不再静默覆盖。
+  if (std::filesystem::exists(std::filesystem::path(path))) {
+    std::wstring msg = trimmed + L" 已存在，是否覆盖？";
+    const int over = MessageBoxW(
+        ctx->dlg, msg.c_str(),
+        ime::i18n::TrW(ime::i18n::Str::kSettingsTitle),
+        MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+    if (over != IDYES) {
+      return;
+    }
+  }
   // 防御：写 presets 中文配置名可能抛异常（已用 u8path 根治路径编码，此处仍
   // 兜底防止任何未捕获异常 → terminate → 闪退，数据丢失）。
   bool preset_ok = false;
@@ -1193,6 +1214,33 @@ void LoadPreset(SettingsContext* ctx) {
   // 与打开窗口时同样的 @ 字体名归一化（防竖排 @ 字体名被判无效）
   if (!loaded.font.family.empty() && loaded.font.family[0] == '@') {
     loaded.font.family = loaded.font.family.substr(1);
+  }
+  // 路径基准修正：preset 文件在 presets/ 子目录，但 yaml 里图片路径约定为相对
+  // config 根（"skins/xxx.png"）。LoadThemeFromYaml 按 preset 所在目录解析会错成
+  // presets/skins/xxx.png（不存在）。这里统一转成相对 config 根的相对路径，这样
+  // 后续「保存并应用」写入 theme.yaml 后，server 按 config 根解析正确。
+  {
+    const auto cfg = std::filesystem::path(ctx->config_dir);
+    auto fix_to_config_rel = [&](std::string& p) {
+      if (p.empty()) return;
+      std::error_code ec;
+      auto fp = std::filesystem::path(p).lexically_normal();
+      // 若路径里含 \presets\ → 去掉这一层（preset 解析时多拼了 presets/）
+      const auto w = fp.wstring();
+      const std::wstring marker = L"\\presets\\";
+      const auto pos = w.find(marker);
+      if (pos != std::wstring::npos) {
+        fp = cfg / w.substr(pos + marker.size());
+      }
+      // 统一取相对 config 根的相对路径（绝对路径也一并规范化）
+      const auto rel = std::filesystem::relative(fp, cfg, ec);
+      if (!ec && !rel.empty() && rel.is_relative()) {
+        p = rel.string();
+      }
+    };
+    fix_to_config_rel(loaded.skin.role_image);
+    fix_to_config_rel(loaded.skin.frame_image);
+    fix_to_config_rel(loaded.background_image);
   }
   ctx->draft = loaded;
   RefreshAllControls(ctx);
@@ -1737,22 +1785,13 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
       }
       return 0;
     case WM_ERASEBKGND:
-      // 2026-10-24 DPI 过渡白闪根治：用面板底色填满客户区，再交 PaintPanel 双缓冲
-      // 整帧覆盖。双重缓冲下本帧与 PaintPanel 同色，不产生擦除/绘制交替闪烁；DPI
-      // 切换的间隙系统若需擦背景，露出的是面板底色而非白色类背景——消除"过渡中间
-      // 极短白底帧"。
-      // 关键：不能依赖缓存的 g_pal（打开时按当时主题定，切深浅色后可能陈旧，会露出
-      // 错误的旧底色——用户实测深色系统下切浅色仍一片黑）。这里每次擦底实时读当前
-      // 系统主题选对应调色板，深浅色随时正确跟随。
-      {
-        const HDC hdc = reinterpret_cast<HDC>(wParam);
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        const std::uint32_t bg = (IsSystemDarkMode() ? &kPaletteDark : &kPaletteLight)->bg_top;
-        HBRUSH br = CreateSolidBrush(RGB((bg >> 16) & 0xFF, (bg >> 8) & 0xFF, bg & 0xFF));
-        FillRect(hdc, &rc, br);
-        DeleteObject(br);
-      }
+      // 2026-10-27 回归修复（取色窗/设置窗拖动闪烁）：直接返回 1 禁止擦除，
+      // 双缓冲整帧覆盖（微软官方 Flicker-Free Displays Using an Off-Screen DC
+      // 标准）。2026-10-24 跨屏修复在此 FillRect 裸画底色——拖动/吸管每帧
+      // InvalidateRect(TRUE) 时，该步骤在双缓冲之外直接写屏 DC，与随后 WM_PAINT
+      // 整帧之间存在采样窗口，快速拖动露纯底色帧 → 色盘闪动（用户回归）。
+      // 去掉后跨屏不闪白：类背景 hbrBackground=nullptr（系统不自动擦白），
+      // 过渡间隙露旧帧而非白帧，WM_PAINT 整帧贴上。跨屏 DPI 其余逻辑不动。
       return 1;
     case WM_DRAWITEM:
       if (ctx != nullptr) {
@@ -2112,6 +2151,25 @@ LRESULT CALLBACK SettingsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 bool RunSettingsDialog(HWND owner, const std::string& config_dir,
                        std::function<void(const skin::Theme&)> on_apply) {
+  // 2026-10-27 崩溃取证：加载预设偶发未捕获 C++ 异常 → std::terminate →
+  // __fastfail(FAST_FAIL_FATAL_APP_EXIT=7) → 0xc0000409 静默闪退（真机事件日志
+  // 三次 BeautypeDeployer 崩溃同偏移 0x1d2995 全为此路径）。这里注册 terminate
+  // 钩子：崩溃前把异常消息写进日志再 abort，杜绝"无日志闪退"，定位根因无需再猜。
+  {
+    static std::once_flag g_terminate_once;
+    std::call_once(g_terminate_once, [] {
+      std::set_terminate([] {
+        try {
+          std::rethrow_exception(std::current_exception());
+        } catch (const std::exception& e) {
+          ::ime::LogF("[FATAL] 未捕获 C++ 异常: %s\n", e.what());
+        } catch (...) {
+          ::ime::LogF("[FATAL] 未捕获未知异常\n");
+        }
+        std::abort();
+      });
+    });
+  }
   ime::i18n::ReloadLanguage();
   RefreshPalette();  // 打开时按系统深浅色选调色板（WM_SETTINGCHANGE 实时切换）
   // DPI 缩放：窗口创建前设 scale（基于 owner 所在屏，无 owner 用主屏 dpi）。
@@ -3101,18 +3159,11 @@ LRESULT CALLBACK ColorPickerProc(HWND hwnd, UINT msg, WPARAM wParam,
       }
       break;
     case WM_ERASEBKGND:
-      // 2026-10-24 DPI 过渡（同父级方案）：擦底填当前系统主题面板底色，再交
-      // WM_PAINT(PaintColorPicker) 整帧覆盖。消除跨屏过渡间隙露白色类背景/空内存
-      // 的闪烁帧；实时读 IsSystemDarkMode()，深浅色随时正确跟随（不用缓存 g_pal）。
-      {
-        const HDC hdc = reinterpret_cast<HDC>(wParam);
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        const std::uint32_t bg = (IsSystemDarkMode() ? &kPaletteDark : &kPaletteLight)->bg_top;
-        HBRUSH br = CreateSolidBrush(RGB((bg >> 16) & 0xFF, (bg >> 8) & 0xFF, bg & 0xFF));
-        FillRect(hdc, &rc, br);
-        DeleteObject(br);
-      }
+      // 2026-10-27 回归修复（同父级）：返回 1 禁止擦除，双缓冲整帧覆盖。
+      // 2026-10-24 在此 FillRect 裸画底色——SV 色盘/色相条拖动时每帧
+      // InvalidateRect(TRUE) 先触发此处裸画再 WM_PAINT，快速拖动露纯底色帧
+      // → 色盘闪动（用户回归 10/23 不闪、10/24 后闪）。去掉后跨屏过渡露旧帧
+      // （类背景 null 不自动擦白），不闪白。跨屏 DPI 其余逻辑一行不动。
       return 1;
     case WM_PAINT:
       if (ctx != nullptr) {
