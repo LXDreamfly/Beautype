@@ -1,6 +1,4 @@
 ﻿; Beautype installation script (完全照官方 weasel install.nsi 写)
-; 所有文件路径均为相对本脚本目录（${__FILEDIR__}，NSIS 3.0+），克隆后无需改路径；
-; 打包前按 README 产物映射把构建产物放入 packaging\Beautype\ 对应位置即可。
 !include FileFunc.nsh
 !include LogicLib.nsh
 !include MUI2.nsh
@@ -9,7 +7,7 @@
 
 Unicode true
 
-!define BEAUTYPE_VERSION 1.1.2
+!define BEAUTYPE_VERSION 1.1.3
 !define REG_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Beautype"
 ; 出厂默认桌宠皮肤文件名（与 src 三处 kDefaultRivName 约定一致；换默认动画时
 ; 把新 .riv 命名为 beautype_pet.riv 替换 packaging\Beautype\pet\ 下同名文件即可）
@@ -89,7 +87,8 @@ call_uninstaller:
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
   ; 2026-10-27 真机踩坑：设置窗常开时 BeautypeDeployer.exe 常驻锁自身文件，
-  ; NSIS File 覆盖静默跳过 → 升级后 deployer 仍是旧版。必须在写文件前杀干净。
+  ; NSIS File 覆盖静默跳过 → 升级后 deployer 仍是旧版（带首帧色块 bug）。
+  ; 必须在写文件前杀干净，Sleep 等 OS 释放句柄。
   nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
   Sleep 500
   ; v4.7.11：升级路径同样清理桌宠——旧版 pet_preview.exe 常驻会占用文件锁，
@@ -142,7 +141,7 @@ Section "Beautype"
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
   ; 2026-10-27：安装段同样杀 deployer——否则设置窗常开时 deployer.exe 被锁，
-  ; File 覆盖静默跳过留下旧版。
+  ; File 覆盖静默跳过留下旧版（带色块 bug 的 v1.1.1 deployer 残留）。
   nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
   Sleep 500
 
@@ -277,7 +276,7 @@ Section "Uninstall"
   nsExec::Exec 'taskkill /f /im BeautypeServer.exe'
   nsExec::Exec 'taskkill /f /im rime_server.exe'
   ; 2026-10-27：卸载段同样杀 deployer——否则设置窗常开时 deployer.exe 被锁，
-  ; Delete 静默失败留下旧 exe 残留。
+  ; Delete 静默失败留下旧 exe 残留（卸载不干净）。
   nsExec::Exec 'taskkill /f /im BeautypeDeployer.exe'
   Sleep 500
   ; M4+：桌宠进程也杀——否则 pet_preview.exe 被占用，RMDir /r "$INSTDIR\pet"

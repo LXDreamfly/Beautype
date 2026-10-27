@@ -150,7 +150,7 @@ target_link_libraries(rime_server PRIVATE rime_engine rime_skin rime_ui
   ${VCPKG_STATIC_LIB}/glog.lib ${VCPKG_STATIC_LIB}/gflags_static.lib
   winhttp urlmon)
 # 产品版本号（自动更新版本比对用；打包时按版本改写，如 0.9.0 测试版 / 1.0.0 正式版）
-target_compile_definitions(rime_server PRIVATE BEAUTYPE_VERSION="1.1.2")
+target_compile_definitions(rime_server PRIVATE BEAUTYPE_VERSION="1.1.3")
 # 诊断用 MAP 文件（定位崩溃地址符号归属；可随时移除）
 target_link_options(rime_server PRIVATE "/MAP:BeautypeServer.map")
 target_compile_features(rime_server PRIVATE cxx_std_17)

@@ -594,8 +594,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpstrCmdLine, int) {
     if (!newest_preset.empty()) {
       ime::skin::Theme saved = theme;
       if (ime::skin::LoadThemeFromYaml(ToUtf8(newest_preset), &saved)) {
+        // 2026-10-27 v1.1.3 修复：preset 存在 presets/ 子目录，其相对图片路径
+        // 会被 ResolveImagePath 错误解析到 presets/skins/（图片实际在 config/skins/），
+        // 导致开机桌宠角色图消失、手动保存后才恢复。
+        // 保留从 config/theme.yaml 正确解析的图片路径，preset 只覆盖颜色/字体/布局/模式。
+        saved.background_image = theme.background_image;
+        saved.skin.role_image  = theme.skin.role_image;
+        saved.skin.frame_image = theme.skin.frame_image;
         theme = saved;
-        LOG("[server] 自动读取用户最新配置: %s\n",
+        LOG("[server] 自动读取用户最新配置: %s (图片路径保留自 theme.yaml)\n",
             newest_preset.filename().string().c_str());
       }
     }
