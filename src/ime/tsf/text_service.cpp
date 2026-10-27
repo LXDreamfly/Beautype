@@ -200,13 +200,11 @@ int VkToRimeKey(int vk, bool shift_down, bool caps_on, int scan_code,
     (void)caps_on;
     return vk + ('a' - 'A');  // XK_a-z（大小写交给 librime + mask）
   }
-  // 数字：无 shift → XK 与 VK 一致；shift → 上档字符 keysym（1→! 2→@ … 0→)）
+  // 数字：永远返回基础 keycode（0x30-0x39），Shift 状态放在 mask 里由 librime
+  // 归一化处理。对齐 weasel KeyEvent.cpp：X11 keysym 约定 keysym 恒为未上档字符，
+  // 上档由 mask 表达。修复前 shift 时返回上档字符（1→! 2→@），导致 rime key_binder
+  // 配置的 Control+Shift+1 收到的是 Control+! 而非 Control+Shift+1，全部匹配失败。
   if (vk >= '0' && vk <= '9') {
-    if (shift_down) {
-      static const int kShiftedDigit[] = {')', '!', '@', '#', '$', '%',
-                                          '^', '&', '*', '('};
-      return kShiftedDigit[vk - '0'];
-    }
     return vk;
   }
   if (vk == VK_SPACE) {

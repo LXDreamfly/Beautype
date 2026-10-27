@@ -24,7 +24,7 @@
 ## ⌨ 输入法功能
 
 ### 多输入方案
-拼音、双拼、五笔按需切换。按 **`F4`**（或 `Ctrl+Shift+1`）打开方案菜单，一键切换下一个方案。
+拼音、双拼、五笔按需切换。按 **`F4`** 打开方案菜单，一键切换下一个方案。
 
 ### 皮肤自定义
 Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可视化皮肤编辑器**（设置面板）：
@@ -45,11 +45,9 @@ Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可
 
 | 快捷键 | 功能 |
 |---|---|
-| `F4` / `Ctrl+Shift+1` | 打开方案菜单 / 切换到下一个输入方案（拼音·双拼·五笔） |
-| `Ctrl+Shift+2` | 中英文输入模式切换 |
-| `Ctrl+Shift+3` / `Ctrl+.` | **中英标点切换**（`。，？` ⇄ `. , ?`） |
-| `Ctrl+Shift+4` | 简体 / 繁体切换 |
-| `Ctrl+Shift+5` | 全角 / 半角切换 |
+| `F4` | 打开方案菜单 / 切换输入方案（拼音·双拼·五笔） |
+| `Left Shift` | 中英文输入模式切换 |
+| `Ctrl+.` | **中英标点切换**（`。，？` ⇄ `. , ?`） |
 | `-` / `=`（`+` 同下页） | 候选翻页（对齐雾凇官方，每页 6 个候选） |
 | `Space` / 数字键 | 上屏首选 / 选候选 |
 
@@ -60,7 +58,7 @@ Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可
 
 | 菜单项 | 说明 |
 |---|---|
-| **切换到中文 / 英文输入** | 中英输入模式切换（与 `Ctrl+Shift+2` 等效） |
+| **切换到中文 / 英文输入** | 中英输入模式切换（与 `Left Shift` 等效） |
 | **自定义皮肤** | 打开皮肤设置面板 |
 | **界面语言** | 子菜单：切换中文 / English 应用界面语言 |
 | **词典管理** | 打开用户词典目录 |
@@ -76,7 +74,7 @@ Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可
 
 ### 其他
 - 横排候选、每页 6 个候选、`-`/`=` 翻页、数字键选候选
-- 中英标点 / 简繁 / 全半角状态**自动记忆**，重启保持上次选择
+- 中英标点状态**自动记忆**，重启保持上次选择
 
 ## 🐰 桌宠功能
 
@@ -120,84 +118,9 @@ Beautype 的皮肤系统不是简单的换色，而是一套完整的**自研可
 - 按键映射 / 协议：`docs/ipc-protocol.md`
 - 开发指南：`docs/dev-guide.md`
 
-## 🔨 构建（从源码）
+## 🔨 构建
 
-以下步骤在 Windows 10/11 x64 上验证（与 `docs/dev-guide.md` 一致）。公开仓**不入库二进制**，安装包在 **Releases** 页面另行提供。
-
-### 前置依赖
-
-| 依赖 | 版本要求 | 用途 |
-|---|---|---|
-| Visual Studio 2022 Build Tools | MSVC v143 + Windows SDK（「使用 C++ 的桌面开发」工作负载） | 编译 C++ |
-| CMake | ≥ 3.20（VS2022 BuildTools 自带） | 构建系统 |
-| Git | Windows 版 | 克隆子模块 / 应用补丁 |
-| vcpkg | triplet `x64-windows-static`（x86 构建另需 `x86-windows-static`）；安装 glog / gflags / leveldb / marisa / opencc / yaml-cpp | librime 静态依赖 |
-| Boost 1.87.0 | 头文件（父目录为 `C:/boost_inc`）+ b2 静态库（x64：`stage/lib`；x86：`stage-x86/lib`，address-model=32） | WeaselIPC 序列化 |
-| NSIS 3 | 仅打包步骤需要 | 生成 BeautypeSetup.exe |
-
-### 获取第三方依赖（顺序重要）
-
-```powershell
-git clone --recurse-submodules https://github.com/LXDreamfly/Beautype.git
-# 若已克隆但未带子模块：
-git submodule update --init third_party/rive-runtime
-
-# 1) librime：不随仓库分发（BSD-3-Clause），固定 commit 7bc3fb0
-scripts\get-librime.cmd
-
-# 2) weasel：不随仓库分发（GPL-3.0），固定 commit d73f6295 + 本地补丁
-scripts\apply-weasel-patch.cmd
-
-# 3) rive-runtime：git submodule（官方 5551696a826）+ 我方构建配置补丁
-git submodule update --init third_party\rive-runtime
-git -C third_party\rive-runtime apply ..\..\patches\rive-runtime-patches\premake-build-config.patch
-# Windows 若因行尾转换报 "patch does not apply"（core.autocrlf=true 时），加 --ignore-whitespace 重试：
-# git -C third_party\rive-runtime apply --ignore-whitespace ..\..\patches\rive-runtime-patches\premake-build-config.patch
-```
-
-各依赖的版本、校验与许可详见 `THIRD-PARTY-NOTICES.md`。
-
-### 构建输入法
-
-```powershell
-# x64（System32 / 64 位宿主：Chrome、豆包、explorer 等）
-scripts\build-x64.cmd
-
-# x86（SysWOW64 / 32 位宿主：WPS 等；只构建 rime_tsf + register_tip）
-scripts\build-x86.cmd
-```
-
-产物映射：
-
-| 产物 | 路径 | 说明 |
-|---|---|---|
-| `beautype_tsf.dll`（x64） | `build\src\ime\Release\beautype_tsf.dll` | 64 位 TSF 组件 |
-| `beautype_tsf.dll`（x86） | `build-x86\src\ime\Release\beautype_tsf.dll` | 32 位 TSF 组件（PE Machine `0x014C`） |
-| `BeautypeServer.exe` | `build\src\ime\Release\BeautypeServer.exe` | 服务进程（引擎 / 候选窗 / 托盘） |
-| `BeautypeDeployer.exe` | `build\Release\BeautypeDeployer.exe` | 部署 / 设置 / 同步 |
-| `register_tip.exe` | `build-x86\Release\register_tip.exe` | TSF 注册工具（**必须 x86**；`build\Release` 下的 x64 版禁止打包） |
-
-测试：
-
-```powershell
-ctest -C Release --test-dir build
-```
-
-### 打包安装器
-
-```powershell
-makensis packaging\Beautype\install.nsi    # 产物：dist\BeautypeSetup.exe
-```
-
-> `install.nsi` 当前**复制现成 exe + riv**，不现场编译；安装包在 Releases 页面另行提供。脚本内所有文件路径均为相对脚本目录（`${__FILEDIR__}`），打包前按上方产物映射把构建产物放入 `packaging\Beautype\` 对应位置即可。
-
-### 桌宠单独编译
-
-```powershell
-tools\smoke\compile_pet.bat    # vcvars64 + cl，链接 rive 静态库（需先构建 rive-runtime）
-```
-
-桌宠源码入口：`tools\smoke\pet_preview.cpp`。`compile_pet.bat` 以脚本所在目录推导仓库根（`%~dp0..\..`），先按 README「获取第三方依赖」构建 rive-runtime 静态库（`third_party\rive-runtime\tests\out\debug\*.lib`）即可直接运行。
+（面向开发者）输入法：CMake 构建（详见 `docs/dev-guide.md`）；桌宠：`tools/smoke/compile_pet.bat`；打包：NSIS（`packaging/`）。
 
 技术栈：C++ / TSF / Rime（librime）· rive-runtime（D3D11）· NSIS。
 
