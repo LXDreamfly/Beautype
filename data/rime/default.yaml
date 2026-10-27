@@ -26,7 +26,7 @@ switcher:
     # 之后所有新会话 RestoreSavedOptions 自动恢复全角）。现由各 schema 的
     # full_shape reset: 0 保证新会话强制回半角，save_options 不再参与。
     - ascii_punct
-    - simplification
+    - traditionalization
     - extended_charset
   fold_options: true
   abbreviate_options: true
@@ -151,7 +151,7 @@ key_binder:
     - { when: always, accept: Control+Shift+1, select: .next }
     - { when: always, accept: Control+Shift+2, toggle: ascii_mode }
     - { when: always, accept: Control+Shift+3, toggle: ascii_punct }
-    - { when: always, accept: Control+Shift+4, toggle: simplification }
+    - { when: always, accept: Control+Shift+4, toggle: traditionalization }
     - { when: always, accept: Control+Shift+5, toggle: full_shape }
     - { when: always, accept: Control+period, toggle: ascii_punct }
 
