@@ -2,6 +2,8 @@
   <img src="assets/brand/beautype-logo-dark.png" alt="Beautype" width="120">
 </p>
 
+https://github.com/user-attachments/assets/9d6d072f-4120-4cb0-abd5-f66f0f21fe93
+
 # Beautype
 
 > **A desktop pet that types with you + an input method that looks good.** · Open Source · Custom skins via uploaded images · With typing pet
