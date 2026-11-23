@@ -2,6 +2,8 @@
   <img src="assets/brand/beautype-logo-dark.png" alt="Beautype" width="120">
 </p>
 
+https://github.com/user-attachments/assets/f8c0ebb2-0942-4a59-9a39-4ee4ba1cf406
+
 # Beautype（敲可爱）
 
 > **一只会陪你打字的桌宠 + 一款长得好看的输入法。** · 开源 · 可上传图片自定义皮肤 · 含打字桌宠
